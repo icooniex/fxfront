@@ -1,0 +1,197 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Register - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'welcome' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">สมัครสมาชิก</h1>
+            <p class="text-secondary">เริ่มต้นใช้งาน FX Bot Monitor</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="mb-4 fade-in" style="animation-delay: 0.1s;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" role="progressbar" style="width: {% if step == 2 %}100{% else %}50{% endif %}%; background-color: var(--primary-blue);"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <small class="text-{% if step == 1 %}primary-blue{% else %}secondary{% endif %}">1. ยอมรับข้อตกลง</small>
+                <small class="text-{% if step == 2 %}primary-blue{% else %}secondary{% endif %}">2. กรอกข้อมูล</small>
+            </div>
+        </div>
+
+        {% if step == 1 %}
+        <!-- Step 1: Consent -->
+        <div class="glass-card fade-in" style="animation-delay: 0.2s;">
+            <h5 class="mb-3">ข้อตกลงและเงื่อนไข</h5>
+            
+            <div class="p-3 mb-4" style="background: rgba(255,255,255,0.03); border-radius: 12px; max-height: 300px; overflow-y: auto;">
+                <p class="text-secondary" style="font-size: 14px; line-height: 1.6;">
+                    <strong>1. การใช้บริการ</strong><br>
+                    ท่านตกลงที่จะใช้บริการตามเงื่อนไขที่กำหนดไว้ และไม่นำระบบไปใช้ในทางที่ผิดกฎหมาย
+                    <br><br>
+                    <strong>2. ข้อมูลส่วนบุคคล</strong><br>
+                    เราจะเก็บรักษาข้อมูลส่วนบุคคลของท่านอย่างปลอดภัย และจะไม่นำไปเปิดเผยแก่บุคคลภายนอกโดยไม่ได้รับอนุญาต
+                    <br><br>
+                    <strong>3. การเชื่อมต่อกับ LINE</strong><br>
+                    การสมัครสมาชิกต้องเชื่อมต่อกับบัญชี LINE ของท่าน เพื่อใช้ในการยืนยันตัวตนและรับการแจ้งเตือน
+                    <br><br>
+                    <strong>4. ความเสี่ยงในการเทรด</strong><br>
+                    การเทรด Forex มีความเสี่ยงสูง ท่านอาจสูญเสียเงินลงทุนได้ทั้งหมด กรุณาศึกษาและทำความเข้าใจก่อนการใช้งาน
+                    <br><br>
+                    <strong>5. ค่าบริการ</strong><br>
+                    การใช้บริการต้องชำระค่าสมาชิกตามแพ็คเกจที่เลือก ไม่มีการคืนเงินเมื่อชำระแล้ว
+                </p>
+            </div>
+
+            <div class="form-check mb-4">
+                <input class="form-check-input" type="checkbox" id="acceptTerms" required>
+                <label class="form-check-label" for="acceptTerms">
+                    ฉันได้อ่านและยอมรับ<a href="#" class="text-primary-blue">ข้อตกลงและเงื่อนไข</a>
+                </label>
+            </div>
+
+            <div class="d-grid">
+                <button type="button" class="btn btn-primary-blue btn-lg" id="continueBtn" disabled>
+                    ถัดไป <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        {% elif step == 2 %}
+        <!-- Step 2: LINE Auth & User Info -->
+        <div class="glass-card fade-in" style="animation-delay: 0.2s;">
+            <!-- LINE Authentication -->
+            <div class="text-center mb-4 p-4" style="background: rgba(0, 195, 0, 0.05); border: 1px solid rgba(0, 195, 0, 0.2); border-radius: 16px;">
+                <i class="bi bi-line" style="font-size: 48px; color: #00c300;"></i>
+                <p class="text-secondary mt-2 mb-3">เชื่อมต่อกับ LINE เพื่อยืนยันตัวตน</p>
+                <button type="button" class="btn btn-primary-blue" id="lineAuthBtn">
+                    <i class="bi bi-line me-2"></i>เชื่อมต่อ LINE
+                </button>
+                <p class="text-muted mt-2 mb-0" style="font-size: 12px;">
+                    <i class="bi bi-check-circle text-profit me-1"></i>เชื่อมต่อสำเร็จ
+                </p>
+            </div>
+
+            <!-- User Info Form -->
+            <form method="post" action="{% url 'register' %}">
+                {% csrf_token %}
+                <input type="hidden" name="step" value="2">
+                <input type="hidden" name="line_uuid" id="lineUuid" value="">
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control form-control-glass" id="username" name="username" placeholder="เลือก username" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control form-control-glass" id="password" name="password" placeholder="ตั้งรหัสผ่าน" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control form-control-glass" id="confirm_password" name="confirm_password" placeholder="ยืนยันรหัสผ่าน" required>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="mb-3">
+                    <label for="first_name" class="form-label">ชื่อ</label>
+                    <input type="text" class="form-control form-control-glass" id="first_name" name="first_name" placeholder="ชื่อจริง" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="last_name" class="form-label">นามสกุล</label>
+                    <input type="text" class="form-control form-control-glass" id="last_name" name="last_name" placeholder="นามสกุล" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="phone" class="form-label">เบอร์โทรศัพท์ (ไม่บังคับ)</label>
+                    <input type="tel" class="form-control form-control-glass" id="phone" name="phone" placeholder="08X-XXX-XXXX">
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>สมัครสมาชิก
+                    </button>
+                    <a href="{% url 'register' %}?step=1" class="btn btn-glass">
+                        <i class="bi bi-arrow-left me-2"></i>ย้อนกลับ
+                    </a>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Login Link -->
+        <div class="text-center mt-4 fade-in" style="animation-delay: 0.3s;">
+            <p class="text-secondary">
+                มีบัญชีอยู่แล้ว? <a href="{% url 'login' %}" class="text-primary-blue">เข้าสู่ระบบ</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    {% if step == 1 %}
+    // Step 1: Enable continue button when checkbox is checked
+    document.getElementById('acceptTerms').addEventListener('change', function() {
+        document.getElementById('continueBtn').disabled = !this.checked;
+    });
+
+    document.getElementById('continueBtn').addEventListener('click', function() {
+        if (document.getElementById('acceptTerms').checked) {
+            window.location.href = '{% url "register" %}?step=2';
+        }
+    });
+    {% elif step == 2 %}
+    // Step 2: LINE Authentication
+    document.getElementById('lineAuthBtn').addEventListener('click', function() {
+        // LINE LIFF Authentication - to be implemented
+        showToast('กำลังเชื่อมต่อกับ LINE...', 'info');
+        
+        // Simulate LINE auth success
+        setTimeout(() => {
+            document.getElementById('lineUuid').value = 'U' + Math.random().toString(36).substr(2, 32);
+            this.disabled = true;
+            this.innerHTML = '<i class="bi bi-check-circle me-2"></i>เชื่อมต่อแล้ว';
+            showToast('เชื่อมต่อ LINE สำเร็จ', 'success');
+        }, 1000);
+    });
+
+    // Password validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            showToast('รหัสผ่านไม่ตรงกัน', 'error');
+            return false;
+        }
+        
+        if (!document.getElementById('lineUuid').value) {
+            e.preventDefault();
+            showToast('กรุณาเชื่อมต่อ LINE ก่อน', 'error');
+            return false;
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

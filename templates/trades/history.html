@@ -1,0 +1,181 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Trade History - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">ประวัติการเทรด</h1>
+            <p class="text-secondary">รายการเทรดทั้งหมดของคุณ</p>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
+            <div class="row g-2">
+                <div class="col-6">
+                    <select class="form-control form-control-glass form-select" id="accountFilter">
+                        <option value="">ทุกบัญชี</option>
+                        {% for account in accounts %}
+                        <option value="{{ account.id }}">{{ account.account_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6">
+                    <select class="form-control form-control-glass form-select" id="statusFilter">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="profit">กำไร</option>
+                        <option value="loss">ขาดทุน</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.2s;">
+            <div class="row g-3 text-center">
+                <div class="col-4">
+                    <p class="text-muted mb-1" style="font-size: 11px;">Total Trades</p>
+                    <p class="mb-0" style="font-size: 20px; font-weight: 700; color: var(--primary-blue);">
+                        {{ total_trades }}
+                    </p>
+                </div>
+                <div class="col-4">
+                    <p class="text-muted mb-1" style="font-size: 11px;">Win Rate</p>
+                    <p class="mb-0" style="font-size: 20px; font-weight: 700; color: var(--profit-green);">
+                        {{ win_rate|floatformat:1 }}%
+                    </p>
+                </div>
+                <div class="col-4">
+                    <p class="text-muted mb-1" style="font-size: 11px;">Total P&L</p>
+                    <p class="mb-0 {% if total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 20px; font-weight: 700;">
+                        {% if total_pnl >= 0 %}+{% endif %}฿{{ total_pnl|floatformat:2 }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade List -->
+        <div id="trade-list">
+            {% if trades %}
+                {% for trade in trades %}
+                <div class="position-card glass-card fade-in mb-3" style="animation-delay: 0.0{{ forloop.counter }}s;">
+                    <div class="position-header">
+                        <div>
+                            <span class="position-symbol">{{ trade.symbol }}</span>
+                            <p class="text-muted mb-0" style="font-size: 12px;">{{ trade.trade_account.account_name }}</p>
+                        </div>
+                        <span class="position-type {{ trade.position_type|lower }}">
+                            {{ trade.get_position_type_display }}
+                        </span>
+                    </div>
+
+                    <div class="position-details mt-3">
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Order ID</span>
+                            <span class="position-detail-value">#{{ trade.mt5_order_id }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Opened</span>
+                            <span class="position-detail-value">{{ trade.opened_at|date:"d M y H:i" }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Closed</span>
+                            <span class="position-detail-value">{{ trade.closed_at|date:"d M y H:i" }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Duration</span>
+                            <span class="position-detail-value">{{ trade.duration }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Entry</span>
+                            <span class="position-detail-value">{{ trade.entry_price }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Exit</span>
+                            <span class="position-detail-value">{{ trade.exit_price }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Lot</span>
+                            <span class="position-detail-value">{{ trade.lot_size }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Commission</span>
+                            <span class="position-detail-value">฿{{ trade.commission|floatformat:2 }}</span>
+                        </div>
+                    </div>
+
+                    <div class="position-pnl">
+                        <div class="pnl-label">Final P&L</div>
+                        <div class="pnl-value {% if trade.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                            {% if trade.profit_loss >= 0 %}+{% endif %}฿{{ trade.profit_loss|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Load More Button -->
+                {% if has_more %}
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-glass" id="loadMoreBtn">
+                        <i class="bi bi-arrow-down-circle me-2"></i>โหลดเพิ่มเติม
+                    </button>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state glass-card-static">
+                    <i class="bi bi-clock-history"></i>
+                    <div class="empty-state-title">ยังไม่มีประวัติ</div>
+                    <div class="empty-state-text">ยังไม่มีการเทรดที่เสร็จสิ้น</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter functionality
+    document.getElementById('accountFilter').addEventListener('change', function() {
+        applyFilters();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        applyFilters();
+    });
+
+    function applyFilters() {
+        const accountId = document.getElementById('accountFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        
+        // Build query string
+        const params = new URLSearchParams();
+        if (accountId) params.append('account', accountId);
+        if (status) params.append('status', status);
+        
+        // Reload with filters
+        window.location.href = '{% url "trades_history" %}?' + params.toString();
+    }
+
+    // Load more functionality
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            showLoading('trade-list');
+            
+            // Simulate loading more trades
+            setTimeout(() => {
+                showToast('โหลดข้อมูลเพิ่มเติมแล้ว', 'success');
+                // In real implementation, this would fetch and append more trades
+            }, 1000);
+        });
+    }
+</script>
+{% endblock %}

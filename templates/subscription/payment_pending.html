@@ -1,0 +1,121 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Payment Pending - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper d-flex align-items-center justify-content-center" style="min-height: 100vh; padding-bottom: 0;">
+    <div class="container-mobile text-center">
+        <!-- Success Icon -->
+        <div class="mb-4 fade-in">
+            <div class="d-inline-block p-4" style="background: rgba(0, 255, 136, 0.1); border-radius: 50%;">
+                <i class="bi bi-clock-history" style="font-size: 80px; color: var(--profit-green);"></i>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="mb-4 fade-in" style="animation-delay: 0.1s;">
+            <h1 class="mb-3">รอการยืนยัน</h1>
+            <p class="text-secondary">
+                ได้รับหลักฐานการโอนเงินของคุณแล้ว<br>
+                กำลังรอทีมงานตรวจสอบ
+            </p>
+        </div>
+
+        <!-- Status Card -->
+        <div class="glass-card text-start mb-4 fade-in" style="animation-delay: 0.2s;">
+            <div class="d-flex align-items-center mb-3">
+                <div class="spinner-border spinner-primary me-3" role="status" style="width: 40px; height: 40px;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div>
+                    <p class="mb-1" style="font-weight: 600;">กำลังตรวจสอบการชำระเงิน</p>
+                    <p class="text-secondary mb-0" style="font-size: 13px;">ใช้เวลาประมาณ 5-15 นาที</p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">แพ็คเกจ</p>
+                    <p class="mb-0" style="font-weight: 600;">{{ package.name }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">ยอดชำระ</p>
+                    <p class="mb-0" style="font-weight: 600; color: var(--primary-blue);">฿{{ payment.payment_amount|floatformat:0 }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">วันที่ชำระ</p>
+                    <p class="mb-0" style="font-size: 14px;">{{ payment.payment_date|date:"d M Y H:i" }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">สถานะ</p>
+                    <p class="mb-0">
+                        <span class="badge-glass" style="background: rgba(255, 165, 0, 0.15); border-color: orange; color: orange;">
+                            รอตรวจสอบ
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="glass-card-static mb-4 fade-in" style="animation-delay: 0.3s;">
+            <div class="d-flex align-items-start text-start">
+                <i class="bi bi-info-circle text-primary-blue me-3 mt-1" style="font-size: 24px;"></i>
+                <div>
+                    <p class="mb-2" style="font-size: 14px; font-weight: 600;">ขั้นตอนถัดไป</p>
+                    <ol class="mb-0 ps-3" style="font-size: 13px; color: var(--text-muted);">
+                        <li>ทีมงานจะตรวจสอบการชำระเงิน</li>
+                        <li>หลังยืนยัน จะส่งข้อมูลบัญชี MT5 ทาง LINE</li>
+                        <li>ทีมงานจะทำการ Setup Bot ให้</li>
+                        <li>เริ่มใช้งานได้ทันที</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-grid gap-2 mb-4 fade-in" style="animation-delay: 0.4s;">
+            <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
+                <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
+            </a>
+            <button type="button" class="btn btn-glass" onclick="refreshStatus()">
+                <i class="bi bi-arrow-clockwise me-2"></i>ตรวจสอบสถานะ
+            </button>
+        </div>
+
+        <!-- Contact -->
+        <div class="fade-in" style="animation-delay: 0.5s;">
+            <p class="text-muted" style="font-size: 13px;">
+                <i class="bi bi-headset me-1"></i>
+                มีปัญหา? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function refreshStatus() {
+        showToast('กำลังตรวจสอบสถานะ...', 'info');
+        
+        // Simulate API call to check payment status
+        setTimeout(() => {
+            // If still pending, show message
+            showToast('ยังอยู่ระหว่างการตรวจสอบ กรุณารอสักครู่', 'warning');
+            
+            // If approved, redirect to dashboard
+            // window.location.href = '{% url "dashboard" %}?payment_approved=true';
+        }, 1000);
+    }
+
+    // Auto refresh every 30 seconds
+    setInterval(() => {
+        console.log('Auto checking payment status...');
+        // Can be implemented to automatically check and redirect when approved
+    }, 30000);
+</script>
+{% endblock %}

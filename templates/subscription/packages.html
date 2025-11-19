@@ -1,0 +1,111 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Choose Package - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'dashboard' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">เลือกแพ็คเกจ</h1>
+            <p class="text-secondary">เลือกแพ็คเกจที่เหมาะสมกับคุณ</p>
+        </div>
+
+        <!-- Packages List -->
+        <form method="post" action="{% url 'payment' %}">
+            {% csrf_token %}
+            <input type="hidden" name="selected_package" id="selected-package" value="">
+            
+            {% for package in packages %}
+            <div class="package-card glass-card fade-in" 
+                 style="animation-delay: 0.{{ forloop.counter }}s;"
+                 data-package-id="{{ package.id }}"
+                 onclick="selectPackage({{ package.id }})">
+                
+                {% if package.is_popular %}
+                <div style="position: absolute; top: -10px; right: 16px;">
+                    <span class="badge-glass badge-primary-blue">
+                        <i class="bi bi-star-fill me-1"></i>ยอดนิยม
+                    </span>
+                </div>
+                {% endif %}
+
+                <div class="package-name">{{ package.name }}</div>
+                <div class="package-price">฿{{ package.price|floatformat:0 }}</div>
+                <div class="package-duration">
+                    <i class="bi bi-calendar-check me-1"></i>
+                    {{ package.duration_days }} วัน
+                </div>
+
+                <div class="divider"></div>
+
+                <ul class="package-features">
+                    {% for feature in package.features_list %}
+                    <li>{{ feature }}</li>
+                    {% endfor %}
+                </ul>
+
+                <button type="button" class="btn btn-primary-blue w-100 mt-3 select-btn">
+                    เลือกแพ็คเกจนี้
+                </button>
+            </div>
+            {% endfor %}
+        </form>
+
+        <!-- Info Box -->
+        <div class="glass-card-static mt-4 fade-in" style="animation-delay: 0.4s;">
+            <div class="d-flex">
+                <i class="bi bi-info-circle text-primary-blue me-3" style="font-size: 24px;"></i>
+                <div>
+                    <p class="mb-2" style="font-size: 14px; color: var(--text-secondary);">
+                        <strong>หมายเหตุ:</strong>
+                    </p>
+                    <ul class="mb-0 ps-3" style="font-size: 13px; color: var(--text-muted);">
+                        <li>1 แพ็คเกจ = 1 บัญชีเทรด</li>
+                        <li>สามารถซื้อหลายแพ็คเกจได้</li>
+                        <li>ชำระผ่าน PromptPay / โอนธนาคาร</li>
+                        <li>ใช้งานได้ทันทีหลังยืนยันการชำระเงิน</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function selectPackage(packageId) {
+        // Remove selected class from all packages
+        document.querySelectorAll('.package-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Add selected class to clicked package
+        const selectedCard = document.querySelector(`[data-package-id="${packageId}"]`);
+        if (selectedCard) {
+            selectedCard.classList.add('selected');
+        }
+        
+        // Set hidden input value
+        document.getElementById('selected-package').value = packageId;
+        
+        // Navigate to payment page
+        setTimeout(() => {
+            window.location.href = `{% url 'payment' %}?package=${packageId}`;
+        }, 300);
+    }
+</script>
+{% endblock %}

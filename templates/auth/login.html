@@ -1,0 +1,89 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Login - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'welcome' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">เข้าสู่ระบบ</h1>
+            <p class="text-secondary">กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="glass-card fade-in" style="animation-delay: 0.1s;">
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control form-control-glass" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control form-control-glass" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+
+                <div class="mb-4 form-check">
+                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label class="form-check-label" for="remember">
+                        จำฉันไว้ในระบบ
+                    </label>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ
+                    </button>
+                    <a href="#" class="btn btn-glass">
+                        <i class="bi bi-lock me-2"></i>ลืมรหัสผ่าน?
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Register Link -->
+        <div class="text-center mt-4 fade-in" style="animation-delay: 0.2s;">
+            <p class="text-secondary">
+                ยังไม่มีบัญชี? <a href="{% url 'register' %}" class="text-primary-blue">สมัครสมาชิก</a>
+            </p>
+        </div>
+
+        <!-- LINE Login Alternative -->
+        <div class="text-center mt-4 fade-in" style="animation-delay: 0.3s;">
+            <div class="divider"></div>
+            <button type="button" class="btn btn-glass w-100 mt-3" id="lineLoginBtn" style="background: rgba(0, 195, 0, 0.1); border-color: #00c300; color: #00c300;">
+                <i class="bi bi-line me-2"></i>เข้าสู่ระบบด้วย LINE
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('lineLoginBtn').addEventListener('click', function() {
+        // LINE LIFF Login - to be implemented
+        showToast('LINE Login ยังไม่เปิดใช้งาน', 'warning');
+    });
+</script>
+{% endblock %}

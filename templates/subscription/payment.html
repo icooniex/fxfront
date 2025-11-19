@@ -1,0 +1,166 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Payment - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'subscription_packages' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">ชำระเงิน</h1>
+            <p class="text-secondary">สแกน QR Code หรือโอนผ่านธนาคาร</p>
+        </div>
+
+        <!-- Package Summary -->
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-secondary">แพ็คเกจที่เลือก</span>
+                <span class="badge-glass badge-primary-blue">{{ package.name }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-secondary">ระยะเวลา</span>
+                <span>{{ package.duration_days }} วัน</span>
+            </div>
+            <div class="divider"></div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span style="font-size: 18px; font-weight: 600;">ยอดชำระ</span>
+                <span style="font-size: 28px; font-weight: 700; color: var(--primary-blue);">
+                    ฿{{ package.price|floatformat:0 }}
+                </span>
+            </div>
+        </div>
+
+        <!-- QR Code for PromptPay -->
+        <div class="glass-card fade-in text-center" style="animation-delay: 0.2s;">
+            <h5 class="mb-3">สแกน QR Code</h5>
+            <p class="text-secondary mb-3" style="font-size: 14px;">
+                สแกนด้วยแอปฯ Mobile Banking ของคุณ
+            </p>
+            
+            <div class="qr-container">
+                <div class="qr-code">
+                    <!-- QR Code will be generated here -->
+                    <img src="https://via.placeholder.com/200x200/ffffff/158bf9?text=QR+Code" alt="QR Code" style="width: 200px; height: 200px;">
+                </div>
+            </div>
+
+            <p class="text-muted mt-3" style="font-size: 13px;">
+                <i class="bi bi-shield-check me-1"></i>
+                PromptPay ID: XXX-XXX-XXXX
+            </p>
+        </div>
+
+        <!-- OR Divider -->
+        <div class="text-center my-4 fade-in" style="animation-delay: 0.3s;">
+            <span class="text-secondary" style="background: var(--bg-dark-start); padding: 0 16px; position: relative; z-index: 1;">
+                หรือ
+            </span>
+            <div style="position: relative; top: -12px; height: 1px; background: var(--border-subtle); z-index: 0;"></div>
+        </div>
+
+        <!-- Bank Transfer Info -->
+        <div class="glass-card fade-in" style="animation-delay: 0.4s;">
+            <h5 class="mb-3">โอนเงินผ่านธนาคาร</h5>
+            
+            <div class="mb-2">
+                <span class="text-secondary" style="font-size: 13px;">ธนาคาร</span>
+                <p class="mb-1" style="font-size: 15px; font-weight: 600;">ธนาคารกสิกรไทย</p>
+            </div>
+            
+            <div class="mb-2">
+                <span class="text-secondary" style="font-size: 13px;">ชื่อบัญชี</span>
+                <p class="mb-1" style="font-size: 15px; font-weight: 600;">FX Bot Trading</p>
+            </div>
+            
+            <div class="mb-3">
+                <span class="text-secondary" style="font-size: 13px;">เลขที่บัญชี</span>
+                <p class="mb-0" style="font-size: 18px; font-weight: 700; color: var(--primary-blue);">
+                    XXX-X-XXXXX-X
+                    <button class="btn btn-glass btn-sm ms-2" onclick="copyAccountNumber()">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </p>
+            </div>
+
+            <div class="alert" style="background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 12px;">
+                <small class="text-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    โปรดโอนตามจำนวนที่ระบุเท่านั้น เพื่อความสะดวกในการตรวจสอบ
+                </small>
+            </div>
+        </div>
+
+        <!-- Upload Slip Form -->
+        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s;">
+            <h5 class="mb-3">อัพโหลดสลิปโอนเงิน</h5>
+            
+            <form method="post" action="{% url 'payment_submit' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="package_id" value="{{ package.id }}">
+                
+                <div class="mb-3">
+                    <label for="slip" class="form-label">เลือกรูปสลิป</label>
+                    <input type="file" 
+                           class="form-control form-control-glass" 
+                           id="slip" 
+                           name="payment_slip" 
+                           accept="image/*" 
+                           capture="environment"
+                           onchange="FXBot.previewPaymentSlip(this)"
+                           required>
+                    <small class="text-muted">รองรับ JPG, PNG (สูงสุด 5MB)</small>
+                </div>
+
+                <!-- Preview Area -->
+                <div id="slip-preview" class="mb-3"></div>
+
+                <div class="mb-3">
+                    <label for="account_name" class="form-label">ชื่อบัญชีเทรด</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="account_name" 
+                           name="account_name" 
+                           placeholder="ตั้งชื่อบัญชีเทรดของคุณ"
+                           required>
+                    <small class="text-muted">เช่น: Bot Account 1, My Trading</small>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>ส่งหลักฐานการโอนเงิน
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Info -->
+        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.6s;">
+            <p class="text-muted" style="font-size: 13px;">
+                <i class="bi bi-headset me-1"></i>
+                ต้องการความช่วยเหลือ? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyAccountNumber() {
+        const accountNumber = 'XXX-X-XXXXX-X';
+        navigator.clipboard.writeText(accountNumber).then(() => {
+            showToast('คัดลอกเลขบัญชีแล้ว', 'success');
+        });
+    }
+</script>
+{% endblock %}

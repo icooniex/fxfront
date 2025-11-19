@@ -1,0 +1,534 @@
+/* ============================================
+   Component Styles - Trading Cards, Navigation, etc.
+   ============================================ */
+
+/* Trading Account Card */
+.account-card {
+    padding: 20px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.account-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--primary-blue);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.account-card:hover::before {
+    opacity: 1;
+}
+
+.account-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.account-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.broker-name {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.account-balance {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 12px 0;
+}
+
+.account-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Position Card */
+.position-card {
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.position-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.position-symbol {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.position-type {
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.position-type.buy {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--profit-green);
+}
+
+.position-type.sell {
+    background: rgba(255, 68, 68, 0.15);
+    color: var(--loss-red);
+}
+
+.position-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.position-detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.position-detail-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.position-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.position-pnl {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    text-align: right;
+}
+
+.pnl-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.pnl-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+/* Package Card */
+.package-card {
+    padding: 24px;
+    margin-bottom: 16px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.package-card.selected {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 20px rgba(21, 139, 249, 0.3);
+}
+
+.package-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.package-price {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: 12px 0;
+}
+
+.package-duration {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.package-features {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+.package-features li {
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+}
+
+.package-features li::before {
+    content: '✓';
+    color: var(--profit-green);
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+/* Bottom Navigation Bar */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+    padding: 12px 0;
+    padding-bottom: calc(12px + var(--safe-area-bottom));
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-nav-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 428px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 12px;
+    min-width: 60px;
+}
+
+.nav-item i {
+    font-size: 24px;
+    margin-bottom: 4px;
+    transition: all 0.3s ease;
+}
+
+.nav-item span {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.nav-item.active {
+    color: var(--primary-blue);
+    background: var(--primary-blue-light);
+}
+
+.nav-item.active i {
+    transform: scale(1.1);
+}
+
+.nav-item:hover {
+    color: var(--primary-blue);
+}
+
+/* Bot Control Panel (Fixed Bottom on Account Detail) */
+.bot-control-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+    padding: 16px;
+    padding-bottom: calc(16px + var(--safe-area-bottom));
+    z-index: 999;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bot-control-container {
+    max-width: 428px;
+    margin: 0 auto;
+}
+
+.bot-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.bot-status-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.bot-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.control-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.control-btn i {
+    font-size: 16px;
+}
+
+/* Mini Dashboard */
+.mini-dashboard {
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.dashboard-header {
+    margin-bottom: 20px;
+}
+
+.account-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.dashboard-stat {
+    text-align: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.dashboard-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.dashboard-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* Chart Container */
+.chart-container {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    height: 200px;
+}
+
+/* Section Headers */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    margin: 20px 0 12px 0;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.section-link {
+    font-size: 14px;
+    color: var(--primary-blue);
+    text-decoration: none;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.empty-state-text {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* Payment Slip Preview */
+.slip-preview {
+    width: 100%;
+    max-width: 300px;
+    margin: 20px auto;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-glass);
+}
+
+.slip-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* QR Code Container */
+.qr-container {
+    text-align: center;
+    padding: 30px;
+    margin: 20px 0;
+}
+
+.qr-code {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    display: inline-block;
+    margin: 20px auto;
+}
+
+/* Settings Toggle */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    font-size: 15px;
+    color: var(--text-primary);
+}
+
+.setting-description {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.form-switch .form-check-input {
+    width: 48px;
+    height: 26px;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+/* Subscription Info Card */
+.subscription-info {
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.subscription-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.subscription-account {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.subscription-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.subscription-detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.subscription-detail-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.subscription-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.expiry-warning {
+    color: var(--loss-red);
+    font-weight: 600;
+}

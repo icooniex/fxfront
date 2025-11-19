@@ -1,0 +1,341 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ account.account_name }} - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper" style="padding-bottom: 180px;">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-3">
+            <a href="{% url 'dashboard' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Mini Dashboard -->
+        <div class="mini-dashboard glass-card fade-in">
+            <div class="dashboard-header">
+                <div class="account-info">
+                    <div>
+                        <h2 class="mb-1">{{ account.account_name }}</h2>
+                        <p class="text-secondary mb-0">{{ account.broker_name }} • {{ account.mt5_account_id }}</p>
+                    </div>
+                    <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}">
+                        {{ account.get_bot_status_display }}
+                    </span>
+                </div>
+                
+                <div class="account-balance">
+                    ฿{{ account.current_balance|floatformat:2 }}
+                </div>
+            </div>
+
+            <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                    <div class="dashboard-stat-label">Total P&L</div>
+                    <div class="dashboard-stat-value {% if account.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                        {% if account.total_pnl >= 0 %}+{% endif %}฿{{ account.total_pnl|floatformat:2 }}
+                    </div>
+                </div>
+                <div class="dashboard-stat">
+                    <div class="dashboard-stat-label">Total Trades</div>
+                    <div class="dashboard-stat-value text-primary-blue">
+                        {{ account.total_trades }}
+                    </div>
+                </div>
+                <div class="dashboard-stat">
+                    <div class="dashboard-stat-label">Win Rate</div>
+                    <div class="dashboard-stat-value text-primary-blue">
+                        {{ account.win_rate|floatformat:1 }}%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equity Curve Chart -->
+            <div class="chart-container">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Open Positions Section -->
+        <div class="section-header">
+            <h3 class="section-title">Open Positions ({{ open_positions.count }})</h3>
+        </div>
+
+        <div id="open-positions-container">
+            {% if open_positions %}
+                {% for position in open_positions %}
+                <div class="position-card glass-card fade-in">
+                    <div class="position-header">
+                        <span class="position-symbol">{{ position.symbol }}</span>
+                        <span class="position-type {{ position.position_type|lower }}">
+                            {{ position.get_position_type_display }}
+                        </span>
+                    </div>
+
+                    <div class="position-details">
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Order ID</span>
+                            <span class="position-detail-value">#{{ position.mt5_order_id }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Open Time</span>
+                            <span class="position-detail-value">{{ position.opened_at|date:"d M y H:i" }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Entry Price</span>
+                            <span class="position-detail-value">{{ position.entry_price }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Lot Size</span>
+                            <span class="position-detail-value">{{ position.lot_size }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">TP</span>
+                            <span class="position-detail-value text-profit">{{ position.take_profit|default:"—" }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">SL</span>
+                            <span class="position-detail-value text-loss">{{ position.stop_loss|default:"—" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="position-pnl">
+                        <div class="pnl-label">Current P&L</div>
+                        <div class="pnl-value {% if position.profit_loss >= 0 %}text-profit glow-profit{% else %}text-loss glow-loss{% endif %}">
+                            {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state glass-card-static">
+                    <i class="bi bi-bar-chart"></i>
+                    <div class="empty-state-title">ไม่มี Position เปิดอยู่</div>
+                    <div class="empty-state-text">ไม่มี Position ที่เปิดอยู่ในขณะนี้</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Trade History Section -->
+        <div class="section-header">
+            <h3 class="section-title">Trade History</h3>
+            <a href="{% url 'trades_history' %}" class="section-link">ดูทั้งหมด</a>
+        </div>
+
+        <div id="trade-history-container">
+            {% if closed_positions %}
+                {% for position in closed_positions %}
+                <div class="position-card glass-card fade-in">
+                    <div class="position-header">
+                        <span class="position-symbol">{{ position.symbol }}</span>
+                        <span class="position-type {{ position.position_type|lower }}">
+                            {{ position.get_position_type_display }}
+                        </span>
+                    </div>
+
+                    <div class="position-details">
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Order ID</span>
+                            <span class="position-detail-value">#{{ position.mt5_order_id }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Closed</span>
+                            <span class="position-detail-value">{{ position.closed_at|date:"d M y H:i" }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Entry</span>
+                            <span class="position-detail-value">{{ position.entry_price }}</span>
+                        </div>
+                        <div class="position-detail-item">
+                            <span class="position-detail-label">Exit</span>
+                            <span class="position-detail-value">{{ position.exit_price }}</span>
+                        </div>
+                    </div>
+
+                    <div class="position-pnl">
+                        <div class="pnl-label">Final P&L</div>
+                        <div class="pnl-value {% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                            {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state glass-card-static">
+                    <i class="bi bi-clock-history"></i>
+                    <div class="empty-state-title">ยังไม่มีประวัติ</div>
+                    <div class="empty-state-text">ยังไม่มีการเทรดที่ปิดไปแล้ว</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Bot Control Panel (Fixed Bottom) -->
+<div class="bot-control-panel">
+    <div class="bot-control-container">
+        <div class="bot-status-row">
+            <div>
+                <span class="bot-status-label">Bot Status:</span>
+                <span class="badge-glass ms-2 {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}">
+                    {{ account.get_bot_status_display }}
+                </span>
+            </div>
+            <div class="bot-controls">
+                <button class="btn btn-glass control-btn" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </div>
+        {% if account.bot_status == 'ACTIVE' %}
+        <button class="btn btn-danger-glass w-100 mt-2" onclick="FXBot.pauseBot({{ account.id }})">
+            <i class="bi bi-pause-circle me-2"></i>Pause Bot & Clear Orders
+        </button>
+        {% else %}
+        <button class="btn btn-primary-blue w-100 mt-2" onclick="FXBot.resumeBot({{ account.id }})">
+            <i class="bi bi-play-circle me-2"></i>Resume Bot
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bot Settings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="settingsForm">
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Lot Size</div>
+                            <div class="setting-description">จำนวน Lot ในการเทรด</div>
+                        </div>
+                        <input type="number" class="form-control-glass" style="width: 100px;" value="{{ account.trade_config.lot_size|default:'0.01' }}" step="0.01" min="0.01">
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Timeframe M5</div>
+                            <div class="setting-description">เปิดการเทรด 5 นาที</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="tf_m5" {% if account.trade_config.timeframes.M5 %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Timeframe M15</div>
+                            <div class="setting-description">เปิดการเทรด 15 นาที</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="tf_m15" {% if account.trade_config.timeframes.M15 %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Notifications</div>
+                            <div class="setting-description">รับการแจ้งเตือนทาง LINE</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="notifications" {% if account.trade_config.notifications %}checked{% endif %}>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary-blue">Save Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- ApexCharts for Equity Curve -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    // Equity Curve Chart
+    const equityData = {{ equity_data|safe }};
+    
+    const options = {
+        series: [{
+            name: 'Balance',
+            data: equityData
+        }],
+        chart: {
+            type: 'area',
+            height: 200,
+            toolbar: {
+                show: false
+            },
+            background: 'transparent'
+        },
+        theme: {
+            mode: 'dark'
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 2,
+            colors: ['#158bf9']
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.1,
+                stops: [0, 90, 100]
+            },
+            colors: ['#158bf9']
+        },
+        grid: {
+            borderColor: 'rgba(255, 255, 255, 0.05)',
+            strokeDashArray: 4
+        },
+        xaxis: {
+            type: 'datetime',
+            labels: {
+                style: {
+                    colors: '#a0a0b0'
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    colors: '#a0a0b0'
+                },
+                formatter: function(value) {
+                    return '฿' + value.toFixed(0);
+                }
+            }
+        },
+        tooltip: {
+            theme: 'dark',
+            x: {
+                format: 'dd MMM yyyy'
+            }
+        }
+    };
+
+    const chart = new ApexCharts(document.querySelector("#equityChart"), options);
+    chart.render();
+</script>
+{% endblock %}

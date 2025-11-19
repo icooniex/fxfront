@@ -1,0 +1,24 @@
+<!-- Bottom Navigation Component -->
+<nav class="bottom-nav">
+    <div class="bottom-nav-container">
+        <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-house-door"></i>
+            <span>หน้าหลัก</span>
+        </a>
+        
+        <a href="{% url 'accounts_list' %}" class="nav-item {% if 'accounts' in request.path %}active{% endif %}">
+            <i class="bi bi-wallet2"></i>
+            <span>บัญชี</span>
+        </a>
+        
+        <a href="{% url 'trades_history' %}" class="nav-item {% if 'trades' in request.path %}active{% endif %}">
+            <i class="bi bi-clock-history"></i>
+            <span>ประวัติ</span>
+        </a>
+        
+        <a href="{% url 'profile' %}" class="nav-item {% if 'profile' in request.path %}active{% endif %}">
+            <i class="bi bi-person"></i>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+</nav>

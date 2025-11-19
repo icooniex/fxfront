@@ -1,0 +1,157 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Profile - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">โปรไฟล์</h1>
+            <p class="text-secondary">ข้อมูลส่วนตัวและสมาชิก</p>
+        </div>
+
+        <!-- User Info Card -->
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
+            <div class="d-flex align-items-center mb-3">
+                <div class="d-flex align-items-center justify-content-center" 
+                     style="width: 60px; height: 60px; background: var(--primary-blue-light); border-radius: 50%; margin-right: 16px;">
+                    <i class="bi bi-person-fill text-primary-blue" style="font-size: 32px;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-1">{{ user.profile.first_name }} {{ user.profile.last_name }}</h4>
+                    <p class="text-secondary mb-0" style="font-size: 14px;">@{{ user.username }}</p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="mb-2">
+                <span class="text-muted" style="font-size: 13px;">LINE ID</span>
+                <p class="mb-1" style="font-size: 14px;">{{ user.profile.line_uuid|truncatechars:20 }}</p>
+            </div>
+
+            {% if user.profile.phone_number %}
+            <div class="mb-2">
+                <span class="text-muted" style="font-size: 13px;">เบอร์โทรศัพท์</span>
+                <p class="mb-1" style="font-size: 14px;">{{ user.profile.phone_number }}</p>
+            </div>
+            {% endif %}
+
+            <div class="mb-0">
+                <span class="text-muted" style="font-size: 13px;">สมัครเมื่อ</span>
+                <p class="mb-0" style="font-size: 14px;">{{ user.date_joined|date:"d M Y" }}</p>
+            </div>
+        </div>
+
+        <!-- Subscriptions Section -->
+        <div class="section-header">
+            <h3 class="section-title">การสมัครสมาชิก</h3>
+        </div>
+
+        {% if subscriptions %}
+            {% for sub in subscriptions %}
+            <div class="subscription-info glass-card fade-in mb-3" style="animation-delay: 0.{{ forloop.counter }}s;">
+                <div class="subscription-header">
+                    <span class="subscription-account">{{ sub.account.account_name }}</span>
+                    <span class="badge-glass {% if sub.status == 'ACTIVE' %}badge-active{% elif sub.status == 'EXPIRED' %}badge-down{% else %}badge-paused{% endif %}">
+                        {{ sub.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="subscription-details">
+                    <div class="subscription-detail-item">
+                        <span class="subscription-detail-label">แพ็คเกจ</span>
+                        <span class="subscription-detail-value">{{ sub.package.name }}</span>
+                    </div>
+                    <div class="subscription-detail-item">
+                        <span class="subscription-detail-label">ราคา</span>
+                        <span class="subscription-detail-value">฿{{ sub.package.price|floatformat:0 }}</span>
+                    </div>
+                    <div class="subscription-detail-item">
+                        <span class="subscription-detail-label">เริ่มต้น</span>
+                        <span class="subscription-detail-value">{{ sub.start_date|date:"d M y" }}</span>
+                    </div>
+                    <div class="subscription-detail-item">
+                        <span class="subscription-detail-label">หมดอายุ</span>
+                        <span class="subscription-detail-value {% if sub.days_remaining <= 7 %}expiry-warning{% endif %}">
+                            {{ sub.expiry_date|date:"d M y" }}
+                            {% if sub.days_remaining <= 7 %}
+                            <br><small>(เหลือ {{ sub.days_remaining }} วัน)</small>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if sub.days_remaining <= 7 and sub.days_remaining > 0 %}
+                <div class="mt-3">
+                    <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue btn-sm w-100">
+                        <i class="bi bi-arrow-repeat me-2"></i>ต่ออายุ
+                    </a>
+                </div>
+                {% elif sub.status == 'EXPIRED' %}
+                <div class="mt-3">
+                    <a href="{% url 'subscription_packages' %}" class="btn btn-danger-glass btn-sm w-100">
+                        <i class="bi bi-exclamation-triangle me-2"></i>ต่ออายุเดี๋ยวนี้
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state glass-card-static">
+                <i class="bi bi-calendar-x"></i>
+                <div class="empty-state-title">ยังไม่มีการสมัครสมาชิก</div>
+                <div class="empty-state-text">เริ่มต้นด้วยการเลือกแพ็คเกจ</div>
+                <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue mt-3">
+                    <i class="bi bi-plus-circle me-2"></i>ซื้อแพ็คเกจ
+                </a>
+            </div>
+        {% endif %}
+
+        <!-- Summary Stats -->
+        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.4s;">
+            <h5 class="mb-3">สรุป</h5>
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="text-center p-3" style="background: rgba(255,255,255,0.03); border-radius: 12px;">
+                        <p class="text-muted mb-1" style="font-size: 12px;">บัญชีทั้งหมด</p>
+                        <p class="mb-0" style="font-size: 24px; font-weight: 700; color: var(--primary-blue);">
+                            {{ total_accounts }}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-center p-3" style="background: rgba(255,255,255,0.03); border-radius: 12px;">
+                        <p class="text-muted mb-1" style="font-size: 12px;">บัญชีที่ใช้งาน</p>
+                        <p class="mb-0" style="font-size: 24px; font-weight: 700; color: var(--profit-green);">
+                            {{ active_accounts }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings/Actions -->
+        <div class="mt-4 d-grid gap-2 fade-in" style="animation-delay: 0.5s;">
+            <a href="#" class="btn btn-glass">
+                <i class="bi bi-gear me-2"></i>ตั้งค่าบัญชี
+            </a>
+            <a href="#" class="btn btn-glass">
+                <i class="bi bi-bell me-2"></i>การแจ้งเตือน
+            </a>
+            <a href="#" class="btn btn-glass">
+                <i class="bi bi-question-circle me-2"></i>ช่วยเหลือ
+            </a>
+            <a href="{% url 'logout' %}" class="btn btn-danger-glass">
+                <i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}
