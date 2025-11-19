@@ -271,3 +271,30 @@ class SubscriptionPayment(TimeStampedModel):
     def __str__(self):
         return f"{self.user.username} - ฿{self.payment_amount} ({self.payment_status})"
 
+
+# Bot API Key Model (Master key for MT5 bot system)
+class BotAPIKey(TimeStampedModel):
+    key = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Master API key for bot authentication"
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Descriptive name for this API key"
+    )
+    last_used = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time this API key was used"
+    )
+
+    class Meta:
+        verbose_name = 'Bot API Key'
+        verbose_name_plural = 'Bot API Keys'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({'Active' if self.is_active else 'Inactive'})"
+

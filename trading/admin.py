@@ -5,8 +5,10 @@ from .models import (
     SubscriptionPackage,
     UserTradeAccount,
     TradeTransaction,
-    SubscriptionPayment
+    SubscriptionPayment,
+    BotAPIKey
 )
+import secrets
 
 
 @admin.register(UserProfile)
@@ -178,4 +180,47 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
             )
         return "No slip uploaded"
     slip_preview.short_description = 'Payment Slip Preview'
+
+
+@admin.register(BotAPIKey)
+class BotAPIKeyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'key_display', 'is_active', 'last_used', 'created_at']
+    list_filter = ['is_active', 'created_at', 'last_used']
+    search_fields = ['name', 'key']
+    readonly_fields = ['key', 'created_at', 'updated_at', 'last_used']
+    ordering = ['-created_at']
+    
+    fieldsets = [
+        ('API Key Information', {
+            'fields': ['name', 'key', 'is_active']
+        }),
+        ('Usage', {
+            'fields': ['last_used'],
+            'classes': ['collapse']
+        }),
+        ('System Information', {
+            'fields': ['created_at', 'updated_at'],
+            'classes': ['collapse']
+        })
+    ]
+    
+    def key_display(self, obj):
+        """Show masked API key for security"""
+        if obj.key:
+            return f"{obj.key[:8]}...{obj.key[-8:]}"
+        return "-"
+    key_display.short_description = 'API Key'
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-generate API key on creation"""
+        if not change:  # Only on creation
+            obj.key = secrets.token_urlsafe(48)
+        super().save_model(request, obj, form, change)
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make key readonly after creation"""
+        if obj:  # Editing existing object
+            return self.readonly_fields
+        else:  # Creating new object
+            return ['created_at', 'updated_at', 'last_used']
 
