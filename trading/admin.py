@@ -114,10 +114,11 @@ class TradeTransactionAdmin(admin.ModelAdmin):
 
     def pnl_display(self, obj):
         color = 'green' if obj.profit_loss >= 0 else 'red'
+        pnl_value = f'{obj.profit_loss:,.2f}'
         return format_html(
-            '<span style="color: {}; font-weight: bold;">฿{:,.2f}</span>',
+            '<span style="color: {}; font-weight: bold;">฿{}</span>',
             color,
-            obj.profit_loss
+            pnl_value
         )
     pnl_display.short_description = 'P&L'
 
@@ -164,10 +165,11 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
 
     def amount_display(self, obj):
         color = 'green' if obj.payment_status == 'COMPLETED' else 'orange'
+        amount_value = f'{obj.payment_amount:,.2f}'
         return format_html(
-            '<span style="color: {}; font-weight: bold;">฿{:,.2f}</span>',
+            '<span style="color: {}; font-weight: bold;">฿{}</span>',
             color,
-            obj.payment_amount
+            amount_value
         )
     amount_display.short_description = 'Amount (THB)'
 
