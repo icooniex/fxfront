@@ -24,12 +24,8 @@ def create_update_order(request):
             'message': 'Invalid JSON data'
         }, status=400)
     
-    # Validate required fields
-    required_fields = [
-        'mt5_account_id', 'mt5_order_id', 'symbol',
-        'position_type', 'position_status', 'opened_at',
-        'entry_price', 'lot_size'
-    ]
+    # Validate required fields (always required)
+    required_fields = ['mt5_account_id', 'mt5_order_id']
     
     errors = {}
     for field in required_fields:
@@ -55,28 +51,64 @@ def create_update_order(request):
             'message': f"Trade account {data['mt5_account_id']} not found"
         }, status=404)
     
-    # Parse datetime fields
+    # Check if this is an update (order already exists)
     try:
-        opened_at = parse_datetime(data['opened_at'])
-        if not opened_at:
-            raise ValueError("Invalid datetime format")
-        closed_at = parse_datetime(data.get('closed_at')) if data.get('closed_at') else None
-    except (ValueError, TypeError):
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Invalid datetime format. Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ'
-        }, status=400)
-    
-    # Convert decimal fields
-    try:
-        decimal_fields = {
-            'entry_price': Decimal(str(data['entry_price'])),
-            'lot_size': Decimal(str(data['lot_size'])),
-            'profit_loss': Decimal(str(data.get('profit_loss', 0))),
-            'commission': Decimal(str(data.get('commission', 0))),
-            'swap_fee': Decimal(str(data.get('swap_fee', 0))),
-        }
+        existing_transaction = TradeTransaction.objects.get(
+            trade_account=trade_account,
+            mt5_order_id=data['mt5_order_id']
+        )
+        is_update = True
+    except TradeTransaction.DoesNotExist:
+        is_update = False
+        # For new orders, these fields are required
+        create_required_fields = ['symbol', 'position_type', 'opened_at', 'entry_price', 'lot_size']
+        for field in create_required_fields:
+            if field not in data:
+                errors[field] = ['This field is required for creating new orders']
         
+        if errors:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing required fields for creating new order',
+                'errors': errors
+            }, status=400)
+    
+    # Parse datetime fields
+    opened_at = None
+    if data.get('opened_at'):
+        try:
+            opened_at = parse_datetime(data['opened_at'])
+            if not opened_at:
+                raise ValueError("Invalid datetime format")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid opened_at datetime format. Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ'
+            }, status=400)
+    
+    closed_at = None
+    if data.get('closed_at'):
+        try:
+            closed_at = parse_datetime(data['closed_at'])
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid closed_at datetime format. Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ'
+            }, status=400)
+    
+    # Convert decimal fields (only if provided)
+    decimal_fields = {}
+    try:
+        if data.get('entry_price'):
+            decimal_fields['entry_price'] = Decimal(str(data['entry_price']))
+        if data.get('lot_size'):
+            decimal_fields['lot_size'] = Decimal(str(data['lot_size']))
+        if data.get('profit_loss') is not None:
+            decimal_fields['profit_loss'] = Decimal(str(data['profit_loss']))
+        if data.get('commission') is not None:
+            decimal_fields['commission'] = Decimal(str(data['commission']))
+        if data.get('swap_fee') is not None:
+            decimal_fields['swap_fee'] = Decimal(str(data['swap_fee']))
         if data.get('exit_price'):
             decimal_fields['exit_price'] = Decimal(str(data['exit_price']))
         if data.get('take_profit'):
@@ -92,14 +124,15 @@ def create_update_order(request):
             'message': 'Invalid decimal format in price/amount fields'
         }, status=400)
     
-    # Validate position type and status
-    if data['position_type'] not in ['BUY', 'SELL']:
+    # Validate position type if provided
+    if data.get('position_type') and data['position_type'] not in ['BUY', 'SELL']:
         return JsonResponse({
             'status': 'error',
             'message': 'Invalid position_type. Must be BUY or SELL'
         }, status=400)
     
-    if data['position_status'] not in ['OPEN', 'CLOSED', 'PENDING']:
+    # Validate position status if provided
+    if data.get('position_status') and data['position_status'] not in ['OPEN', 'CLOSED', 'PENDING']:
         return JsonResponse({
             'status': 'error',
             'message': 'Invalid position_status. Must be OPEN, CLOSED, or PENDING'
@@ -112,32 +145,58 @@ def create_update_order(request):
             'message': 'Invalid close_reason. Must be MANUAL, TP, SL, or MARGIN_CALL'
         }, status=400)
     
-    # Get or create transaction
-    transaction, created = TradeTransaction.objects.get_or_create(
-        trade_account=trade_account,
-        mt5_order_id=data['mt5_order_id'],
-        defaults={
-            'symbol': data['symbol'],
-            'position_type': data['position_type'],
-            'position_status': data['position_status'],
-            'opened_at': opened_at,
-            'closed_at': closed_at,
-            'close_reason': data.get('close_reason'),
-            **decimal_fields
-        }
-    )
-    
-    # If updating existing transaction
-    if not created:
-        transaction.position_status = data['position_status']
-        transaction.closed_at = closed_at
-        transaction.close_reason = data.get('close_reason')
-        transaction.exit_price = decimal_fields.get('exit_price')
-        transaction.profit_loss = decimal_fields['profit_loss']
-        transaction.commission = decimal_fields['commission']
-        transaction.swap_fee = decimal_fields['swap_fee']
-        transaction.account_balance_at_close = decimal_fields.get('account_balance_at_close')
+    # Create or update transaction
+    if is_update:
+        # Update existing transaction
+        transaction = existing_transaction
+        
+        if data.get('position_status'):
+            transaction.position_status = data['position_status']
+        if closed_at is not None:
+            transaction.closed_at = closed_at
+        if data.get('close_reason'):
+            transaction.close_reason = data['close_reason']
+        
+        # Update decimal fields if provided
+        if 'exit_price' in decimal_fields:
+            transaction.exit_price = decimal_fields['exit_price']
+        if 'take_profit' in decimal_fields:
+            transaction.take_profit = decimal_fields['take_profit']
+        if 'stop_loss' in decimal_fields:
+            transaction.stop_loss = decimal_fields['stop_loss']
+        if 'profit_loss' in decimal_fields:
+            transaction.profit_loss = decimal_fields['profit_loss']
+        if 'commission' in decimal_fields:
+            transaction.commission = decimal_fields['commission']
+        if 'swap_fee' in decimal_fields:
+            transaction.swap_fee = decimal_fields['swap_fee']
+        if 'account_balance_at_close' in decimal_fields:
+            transaction.account_balance_at_close = decimal_fields['account_balance_at_close']
+        
         transaction.save()
+        created = False
+    else:
+        # Create new transaction
+        transaction = TradeTransaction.objects.create(
+            trade_account=trade_account,
+            mt5_order_id=data['mt5_order_id'],
+            symbol=data['symbol'],
+            position_type=data['position_type'],
+            position_status=data.get('position_status', 'OPEN'),
+            opened_at=opened_at,
+            closed_at=closed_at,
+            close_reason=data.get('close_reason'),
+            entry_price=decimal_fields['entry_price'],
+            lot_size=decimal_fields['lot_size'],
+            exit_price=decimal_fields.get('exit_price'),
+            take_profit=decimal_fields.get('take_profit'),
+            stop_loss=decimal_fields.get('stop_loss'),
+            profit_loss=decimal_fields.get('profit_loss', Decimal('0.0000')),
+            commission=decimal_fields.get('commission', Decimal('0.0000')),
+            swap_fee=decimal_fields.get('swap_fee', Decimal('0.0000')),
+            account_balance_at_close=decimal_fields.get('account_balance_at_close')
+        )
+        created = True
     
     # Update account balance if provided
     if data.get('current_balance'):
