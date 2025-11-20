@@ -105,6 +105,13 @@ def create_update_order(request):
             'message': 'Invalid position_status. Must be OPEN, CLOSED, or PENDING'
         }, status=400)
     
+    # Validate close_reason if provided
+    if data.get('close_reason') and data['close_reason'] not in ['MANUAL', 'TP', 'SL', 'MARGIN_CALL']:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid close_reason. Must be MANUAL, TP, SL, or MARGIN_CALL'
+        }, status=400)
+    
     # Get or create transaction
     transaction, created = TradeTransaction.objects.get_or_create(
         trade_account=trade_account,
@@ -115,6 +122,7 @@ def create_update_order(request):
             'position_status': data['position_status'],
             'opened_at': opened_at,
             'closed_at': closed_at,
+            'close_reason': data.get('close_reason'),
             **decimal_fields
         }
     )
@@ -123,6 +131,7 @@ def create_update_order(request):
     if not created:
         transaction.position_status = data['position_status']
         transaction.closed_at = closed_at
+        transaction.close_reason = data.get('close_reason')
         transaction.exit_price = decimal_fields.get('exit_price')
         transaction.profit_loss = decimal_fields['profit_loss']
         transaction.commission = decimal_fields['commission']
