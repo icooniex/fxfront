@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from decimal import Decimal, InvalidOperation
@@ -264,3 +265,103 @@ def bot_heartbeat(request):
         'subscription_status': trade_account.subscription_status,
         'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0
     }, status=200)
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_account_live_data(request, account_id):
+    """
+    Get real-time account data for frontend updates.
+    Returns account balance, stats, open positions, and recent closed positions.
+    """
+    try:
+        # Get account and verify ownership
+        account = UserTradeAccount.objects.get(
+            id=account_id,
+            user=request.user,
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Account not found'
+        }, status=404)
+    
+    # Get open positions
+    open_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='OPEN',
+        is_active=True
+    ).order_by('-opened_at')
+    
+    # Get recent closed positions (last 10)
+    closed_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    ).order_by('-closed_at')[:10]
+    
+    # Calculate stats
+    all_closed = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    )
+    
+    total_trades = all_closed.count()
+    total_pnl = sum(t.profit_loss for t in all_closed)
+    winning_trades = all_closed.filter(profit_loss__gt=0).count()
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    # Format open positions
+    open_positions_data = []
+    for pos in open_positions:
+        open_positions_data.append({
+            'id': pos.id,
+            'mt5_order_id': pos.mt5_order_id,
+            'symbol': pos.symbol,
+            'position_type': pos.position_type,
+            'position_type_display': pos.get_position_type_display(),
+            'entry_price': str(pos.entry_price),
+            'lot_size': str(pos.lot_size),
+            'take_profit': str(pos.take_profit) if pos.take_profit else None,
+            'stop_loss': str(pos.stop_loss) if pos.stop_loss else None,
+            'profit_loss': float(pos.profit_loss),
+            'opened_at': pos.opened_at.strftime('%d %b %y %H:%M'),
+        })
+    
+    # Format closed positions
+    closed_positions_data = []
+    for pos in closed_positions:
+        closed_positions_data.append({
+            'id': pos.id,
+            'mt5_order_id': pos.mt5_order_id,
+            'symbol': pos.symbol,
+            'position_type': pos.position_type,
+            'position_type_display': pos.get_position_type_display(),
+            'close_reason': pos.close_reason,
+            'close_reason_display': pos.get_close_reason_display() if pos.close_reason else None,
+            'entry_price': str(pos.entry_price),
+            'lot_size': str(pos.lot_size),
+            'profit_loss': float(pos.profit_loss),
+            'closed_at': pos.closed_at.strftime('%d %b %y %H:%M') if pos.closed_at else None,
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'account': {
+                'balance': float(account.current_balance),
+                'bot_status': account.bot_status,
+                'bot_status_display': account.get_bot_status_display(),
+            },
+            'stats': {
+                'total_pnl': float(total_pnl),
+                'total_trades': total_trades,
+                'win_rate': round(win_rate, 1),
+            },
+            'open_positions': open_positions_data,
+            'closed_positions': closed_positions_data,
+        },
+        'timestamp': timezone.now().isoformat()
+    })

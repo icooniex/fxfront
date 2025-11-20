@@ -7,49 +7,47 @@
 <div class="page-wrapper">
     <div class="container-mobile">
         <!-- Header -->
-        <div class="mb-4 fade-in">
-            <h1 class="mb-2">โปรไฟล์</h1>
-            <p class="text-secondary">ข้อมูลส่วนตัวและสมาชิก</p>
+        <div class="mb-3 fade-in">
+            <h1 class="mb-1">โปรไฟล์</h1>
+            <p class="text-secondary mb-0" style="font-size: 14px;">ข้อมูลส่วนตัวและสมาชิก</p>
         </div>
 
         <!-- User Info Card -->
-        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 16px;">
             <div class="d-flex align-items-center mb-3">
                 <div class="d-flex align-items-center justify-content-center" 
-                     style="width: 60px; height: 60px; background: var(--primary-blue-light); border-radius: 50%; margin-right: 16px;">
-                    <i class="bi bi-person-fill text-primary-blue" style="font-size: 32px;"></i>
+                     style="width: 50px; height: 50px; background: var(--primary-blue-light); border-radius: 50%; margin-right: 12px;">
+                    <i class="bi bi-person-fill text-primary-blue" style="font-size: 28px;"></i>
                 </div>
                 <div>
-                    <h4 class="mb-1">{{ user.profile.first_name }} {{ user.profile.last_name }}</h4>
-                    <p class="text-secondary mb-0" style="font-size: 14px;">@{{ user.username }}</p>
+                    <h5 class="mb-0" style="font-weight: 600;">{{ user.profile.first_name }} {{ user.profile.last_name }}</h5>
+                    <p class="text-secondary mb-0" style="font-size: 13px;">@{{ user.username }}</p>
                 </div>
             </div>
 
-            <div class="divider"></div>
+            <div class="divider" style="margin: 12px 0;"></div>
 
             <div class="mb-2">
-                <span class="text-muted" style="font-size: 13px;">เบอร์โทรศัพท์</span>
-                <p class="mb-1" style="font-size: 14px;">{{ user.profile.phone_number|default:"ไม่ได้ระบุ" }}</p>
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">เบอร์โทรศัพท์</span>
+                <p class="mb-0" style="font-size: 14px;">{{ user.profile.phone_number|default:"ไม่ได้ระบุ" }}</p>
             </div>
 
             <div class="mb-0">
-                <span class="text-muted" style="font-size: 13px;">สมัครเมื่อ</span>
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">สมัครเมื่อ</span>
                 <p class="mb-0" style="font-size: 14px;">{{ user.date_joined|date:"d M Y" }}</p>
             </div>
         </div>
 
         <!-- LINE Connection Card -->
-        <div class="glass-card fade-in mb-4" style="animation-delay: 0.15s;">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div>
-                    <h5 class="mb-1"><i class="bi bi-line me-2" style="color: #00c300;"></i>LINE Notification</h5>
-                    <p class="text-secondary mb-0" style="font-size: 13px;">เชื่อมต่อ LINE เพื่อรับการแจ้งเตือน</p>
-                </div>
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.15s; padding: 16px;">
+            <div class="mb-3">
+                <h6 class="mb-1" style="font-weight: 600;"><i class="bi bi-line me-2" style="color: #00c300;"></i>LINE Notification</h6>
+                <p class="text-secondary mb-0" style="font-size: 12px;">เชื่อมต่อ LINE เพื่อรับการแจ้งเตือน</p>
             </div>
 
             {% if user.profile.is_line_connected %}
             <!-- LINE Connected -->
-            <div class="p-3 mb-3" style="background: rgba(0, 195, 0, 0.05); border: 1px solid rgba(0, 195, 0, 0.2); border-radius: 12px;">
+            <div class="p-2 mb-2" style="background: rgba(0, 195, 0, 0.05); border: 1px solid rgba(0, 195, 0, 0.2); border-radius: 8px;">
                 <div class="d-flex align-items-center">
                     {% if user.profile.line_picture_url %}
                     <img src="{{ user.profile.line_picture_url }}" alt="LINE Avatar" 
@@ -71,10 +69,10 @@
             </div>
             {% else %}
             <!-- LINE Not Connected -->
-            <div class="p-3 mb-3" style="background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); border-radius: 12px;">
+            <div class="p-3 mb-2" style="background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); border-radius: 8px;">
                 <div class="text-center">
-                    <i class="bi bi-exclamation-triangle" style="font-size: 32px; color: #ffc107;"></i>
-                    <p class="mt-2 mb-3 text-secondary" style="font-size: 14px;">ยังไม่ได้เชื่อมต่อ LINE<br>คุณจะไม่ได้รับการแจ้งเตือนเทรด</p>
+                    <i class="bi bi-exclamation-triangle" style="font-size: 28px; color: #ffc107;"></i>
+                    <p class="mt-2 mb-2 text-secondary" style="font-size: 13px;">ยังไม่ได้เชื่อมต่อ LINE<br>คุณจะไม่ได้รับการแจ้งเตือนเทรด</p>
                     <a href="{% url 'line_connect' %}" class="btn btn-primary-blue btn-sm">
                         <i class="bi bi-line me-2"></i>เชื่อมต่อ LINE
                     </a>
@@ -82,8 +80,8 @@
             </div>
             {% endif %}
 
-            <div class="mt-3">
-                <p class="text-muted mb-0" style="font-size: 12px;">
+            <div class="mt-2">
+                <p class="text-muted mb-0" style="font-size: 11px;">
                     <i class="bi bi-info-circle me-1"></i>
                     การเชื่อมต่อ LINE จะช่วยให้คุณได้รับการแจ้งเตือนเมื่อมีการเทรดใหม่หรือเหตุการณ์สำคัญ
                 </p>
@@ -91,13 +89,13 @@
         </div>
 
         <!-- Subscriptions Section -->
-        <div class="section-header">
-            <h3 class="section-title">การสมัครสมาชิก</h3>
+        <div class="section-header" style="margin-top: 20px; margin-bottom: 12px;">
+            <h6 class="section-title" style="font-weight: 600;">การสมัครสมาชิก</h6>
         </div>
 
         {% if subscriptions %}
             {% for sub in subscriptions %}
-            <div class="subscription-info glass-card fade-in mb-3" style="animation-delay: 0.{{ forloop.counter }}s;">
+            <div class="subscription-info glass-card fade-in mb-2" style="animation-delay: 0.{{ forloop.counter }}s; padding: 16px;">
                 <div class="subscription-header">
                     <span class="subscription-account">{{ sub.account.account_name }}</span>
                     <span class="badge-glass {% if sub.status == 'ACTIVE' %}badge-active{% elif sub.status == 'EXPIRED' %}badge-down{% else %}badge-paused{% endif %}">
@@ -156,21 +154,21 @@
         {% endif %}
 
         <!-- Summary Stats -->
-        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.4s;">
-            <h5 class="mb-3">สรุป</h5>
-            <div class="row g-3">
+        <div class="glass-card mt-3 fade-in" style="animation-delay: 0.4s; padding: 16px;">
+            <h6 class="mb-3" style="font-weight: 600;">สรุป</h6>
+            <div class="row g-2">
                 <div class="col-6">
-                    <div class="text-center p-3" style="background: rgba(255,255,255,0.03); border-radius: 12px;">
-                        <p class="text-muted mb-1" style="font-size: 12px;">บัญชีทั้งหมด</p>
-                        <p class="mb-0" style="font-size: 24px; font-weight: 700; color: var(--primary-blue);">
+                    <div class="text-center p-2" style="background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <p class="text-muted mb-1" style="font-size: 11px;">บัญชีทั้งหมด</p>
+                        <p class="mb-0" style="font-size: 22px; font-weight: 700; color: var(--primary-blue);">
                             {{ total_accounts }}
                         </p>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="text-center p-3" style="background: rgba(255,255,255,0.03); border-radius: 12px;">
-                        <p class="text-muted mb-1" style="font-size: 12px;">บัญชีที่ใช้งาน</p>
-                        <p class="mb-0" style="font-size: 24px; font-weight: 700; color: var(--profit-green);">
+                    <div class="text-center p-2" style="background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <p class="text-muted mb-1" style="font-size: 11px;">บัญชีที่ใช้งาน</p>
+                        <p class="mb-0" style="font-size: 22px; font-weight: 700; color: var(--profit-green);">
                             {{ active_accounts }}
                         </p>
                     </div>
@@ -179,7 +177,7 @@
         </div>
 
         <!-- Settings/Actions -->
-        <div class="mt-4 d-grid gap-2 fade-in" style="animation-delay: 0.5s;">
+        <div class="mt-3 d-grid gap-2 fade-in" style="animation-delay: 0.5s;">
             <a href="#" class="btn btn-glass">
                 <i class="bi bi-gear me-2"></i>ตั้งค่าบัญชี
             </a>

@@ -10,4 +10,7 @@ urlpatterns = [
     
     # Bot heartbeat
     path('heartbeat/', views.bot_heartbeat, name='api_bot_heartbeat'),
+    
+    # Real-time account data (frontend)
+    path('account/<int:account_id>/live/', views.get_account_live_data, name='api_account_live_data'),
 ]
