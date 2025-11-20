@@ -4,7 +4,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
+import requests
+import urllib.parse
+import secrets
 from .models import (
     UserProfile,
     SubscriptionPackage,
@@ -96,6 +100,111 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'ออกจากระบบเรียบร้อย')
     return redirect('welcome')
+
+
+# ============================================
+# LINE Login Views
+# ============================================
+
+def line_login_view(request):
+    """Redirect to LINE OAuth for authentication"""
+    if not settings.LINE_CHANNEL_ID:
+        messages.error(request, 'LINE Login ยังไม่ได้ตั้งค่า')
+        return redirect('login')
+    
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    request.session['line_login_state'] = state
+    
+    # Build LINE authorization URL
+    params = {
+        'response_type': 'code',
+        'client_id': settings.LINE_CHANNEL_ID,
+        'redirect_uri': settings.LINE_CALLBACK_URL,
+        'state': state,
+        'scope': 'profile openid email',
+    }
+    
+    line_auth_url = f"https://access.line.me/oauth2/v2.1/authorize?{urllib.parse.urlencode(params)}"
+    return redirect(line_auth_url)
+
+
+def line_callback_view(request):
+    """Handle LINE OAuth callback"""
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    stored_state = request.session.get('line_login_state')
+    
+    # Verify state for CSRF protection
+    if not code or not state or state != stored_state:
+        messages.error(request, 'การเข้าสู่ระบบด้วย LINE ล้มเหลว')
+        return redirect('login')
+    
+    try:
+        # Exchange code for access token
+        token_url = 'https://api.line.me/oauth2/v2.1/token'
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': settings.LINE_CALLBACK_URL,
+            'client_id': settings.LINE_CHANNEL_ID,
+            'client_secret': settings.LINE_CHANNEL_SECRET,
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        token_response.raise_for_status()
+        token_json = token_response.json()
+        access_token = token_json.get('access_token')
+        
+        if not access_token:
+            raise Exception('ไม่สามารถรับ access token จาก LINE')
+        
+        # Get user profile from LINE
+        profile_url = 'https://api.line.me/v2/profile'
+        headers = {'Authorization': f'Bearer {access_token}'}
+        profile_response = requests.get(profile_url, headers=headers)
+        profile_response.raise_for_status()
+        profile = profile_response.json()
+        
+        line_user_id = profile.get('userId')
+        display_name = profile.get('displayName', '')
+        picture_url = profile.get('pictureUrl', '')
+        
+        if not line_user_id:
+            raise Exception('ไม่สามารถรับข้อมูลผู้ใช้จาก LINE')
+        
+        # Check if user exists with this LINE ID
+        try:
+            user_profile = UserProfile.objects.get(line_uuid=line_user_id)
+            user = user_profile.user
+            
+            # Update LINE profile data
+            user_profile.line_display_name = display_name
+            user_profile.line_picture_url = picture_url
+            user_profile.save()
+            
+            # Login user
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(request, f'ยินดีต้อนรับกลับ {display_name}')
+            return redirect('dashboard')
+            
+        except UserProfile.DoesNotExist:
+            # New user - store LINE data in session and redirect to registration
+            request.session['line_user_data'] = {
+                'line_uuid': line_user_id,
+                'display_name': display_name,
+                'picture_url': picture_url,
+            }
+            messages.info(request, 'กรุณากรอกข้อมูลเพื่อสมัครสมาชิก')
+            return redirect('register')
+    
+    except Exception as e:
+        messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+        return redirect('login')
+    
+    finally:
+        # Clear state from session
+        request.session.pop('line_login_state', None)
 
 
 # ============================================

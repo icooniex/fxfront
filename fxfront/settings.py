@@ -150,3 +150,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'welcome'
+
+# LINE Login Configuration
+LINE_CHANNEL_ID = config('LINE_CHANNEL_ID', default='')
+LINE_CHANNEL_SECRET = config('LINE_CHANNEL_SECRET', default='')
+LINE_CALLBACK_URL = config('LINE_CALLBACK_URL', default='http://localhost:8000/auth/line/callback/')

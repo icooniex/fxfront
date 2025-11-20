@@ -50,6 +50,8 @@ class BotStatus(models.TextChoices):
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     line_uuid = models.CharField(max_length=100, unique=True, db_index=True)
+    line_display_name = models.CharField(max_length=200, blank=True)
+    line_picture_url = models.URLField(max_length=500, blank=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20, blank=True)

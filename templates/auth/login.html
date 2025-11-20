@@ -71,19 +71,13 @@
         <!-- LINE Login Alternative -->
         <div class="text-center mt-4 fade-in" style="animation-delay: 0.3s;">
             <div class="divider"></div>
-            <button type="button" class="btn btn-glass w-100 mt-3" id="lineLoginBtn" style="background: rgba(0, 195, 0, 0.1); border-color: #00c300; color: #00c300;">
+            <a href="{% url 'line_login' %}" class="btn btn-glass w-100 mt-3" style="background: rgba(0, 195, 0, 0.1); border-color: #00c300; color: #00c300;">
                 <i class="bi bi-line me-2"></i>เข้าสู่ระบบด้วย LINE
-            </button>
+            </a>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.getElementById('lineLoginBtn').addEventListener('click', function() {
-        // LINE LIFF Login - to be implemented
-        showToast('LINE Login ยังไม่เปิดใช้งาน', 'warning');
-    });
-</script>
 {% endblock %}
