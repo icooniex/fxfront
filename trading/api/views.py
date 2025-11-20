@@ -406,6 +406,10 @@ def get_dashboard_live_data(request):
         )
         
         total_trades = all_closed.count()
+        closed_pnl = sum(t.profit_loss for t in all_closed)
+        
+        # Total P&L = Closed P&L + Current Open P&L
+        total_pnl = closed_pnl + current_pnl
         
         # Calculate days until expiry
         days_until_expiry = 0
@@ -422,6 +426,7 @@ def get_dashboard_live_data(request):
             'bot_status_display': account.get_bot_status_display(),
             'open_positions_count': open_count,
             'current_pnl': float(current_pnl),
+            'total_pnl': float(total_pnl),
             'total_trades': total_trades,
             'days_until_expiry': days_until_expiry,
         })
