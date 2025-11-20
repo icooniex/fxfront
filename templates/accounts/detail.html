@@ -34,19 +34,19 @@
             <div class="dashboard-stats">
                 <div class="dashboard-stat">
                     <div class="dashboard-stat-label">Total P&L</div>
-                    <div class="dashboard-stat-value {% if account.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    <div id="total-pnl" class="dashboard-stat-value {% if account.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
                         {% if account.total_pnl >= 0 %}+{% endif %}฿{{ account.total_pnl|floatformat:2 }}
                     </div>
                 </div>
                 <div class="dashboard-stat">
                     <div class="dashboard-stat-label">Total Trades</div>
-                    <div class="dashboard-stat-value text-primary-blue">
+                    <div id="total-trades" class="dashboard-stat-value text-primary-blue">
                         {{ account.total_trades }}
                     </div>
                 </div>
                 <div class="dashboard-stat">
                     <div class="dashboard-stat-label">Win Rate</div>
-                    <div class="dashboard-stat-value text-primary-blue">
+                    <div id="win-rate" class="dashboard-stat-value text-primary-blue">
                         {{ account.win_rate|floatformat:1 }}%
                     </div>
                 </div>
@@ -325,7 +325,7 @@
         
         updateStats(stats) {
             // Update Total P&L
-            const pnlEl = document.querySelector('.dashboard-stats .dashboard-stat:nth-child(1) .dashboard-stat-value');
+            const pnlEl = document.getElementById('total-pnl');
             if (pnlEl) {
                 const formatted = (stats.total_pnl >= 0 ? '+' : '') + '฿' + stats.total_pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 if (pnlEl.textContent.trim() !== formatted) {
@@ -336,14 +336,14 @@
             }
             
             // Update Total Trades
-            const tradesEl = document.querySelector('.dashboard-stats .dashboard-stat:nth-child(2) .dashboard-stat-value');
+            const tradesEl = document.getElementById('total-trades');
             if (tradesEl && tradesEl.textContent.trim() !== stats.total_trades.toString()) {
                 tradesEl.textContent = stats.total_trades;
                 this.flashElement(tradesEl);
             }
             
             // Update Win Rate
-            const winRateEl = document.querySelector('.dashboard-stats .dashboard-stat:nth-child(3) .dashboard-stat-value');
+            const winRateEl = document.getElementById('win-rate');
             if (winRateEl) {
                 const formatted = stats.win_rate + '%';
                 if (winRateEl.textContent.trim() !== formatted) {
