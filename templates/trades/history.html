@@ -61,57 +61,37 @@
         <div id="trade-list">
             {% if trades %}
                 {% for trade in trades %}
-                <div class="position-card glass-card fade-in mb-3" style="animation-delay: 0.0{{ forloop.counter }}s;">
-                    <div class="position-header">
+                <div class="position-row glass-card fade-in" style="padding: 12px 16px; margin-bottom: 8px; animation-delay: 0.0{{ forloop.counter }}s;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; font-weight: 600; color: #ffffff;">{{ trade.symbol }}</span>
+                            <span class="position-type {{ trade.position_type|lower }}" style="font-size: 12px; padding: 2px 8px;">
+                                {{ trade.get_position_type_display }}
+                            </span>
+                            {% if trade.close_reason %}
+                            <span class="{% if trade.close_reason == 'TP' %}text-profit{% elif trade.close_reason == 'SL' %}text-loss{% else %}text-secondary{% endif %}" style="font-size: 12px; padding: 2px 8px; border: 1px solid currentColor; border-radius: 4px;">
+                                {{ trade.get_close_reason_display }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="{% if trade.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 18px; font-weight: 600;">
+                                {% if trade.profit_loss >= 0 %}+{% endif %}฿{{ trade.profit_loss|floatformat:2 }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
                         <div>
-                            <span class="position-symbol">{{ trade.symbol }}</span>
-                            <p class="text-muted mb-0" style="font-size: 12px;">{{ trade.trade_account.account_name }}</p>
+                            <span style="opacity: 0.6;">{{ trade.get_position_type_display }} {{ trade.lot_size }} lot at {{ trade.entry_price }}</span>
                         </div>
-                        <span class="position-type {{ trade.position_type|lower }}">
-                            {{ trade.get_position_type_display }}
-                        </span>
-                    </div>
-
-                    <div class="position-details mt-3">
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Order ID</span>
-                            <span class="position-detail-value">#{{ trade.mt5_order_id }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Opened</span>
-                            <span class="position-detail-value">{{ trade.opened_at|date:"d M y H:i" }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Closed</span>
-                            <span class="position-detail-value">{{ trade.closed_at|date:"d M y H:i" }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Duration</span>
-                            <span class="position-detail-value">{{ trade.duration }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Entry</span>
-                            <span class="position-detail-value">{{ trade.entry_price }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Exit</span>
-                            <span class="position-detail-value">{{ trade.exit_price }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Lot</span>
-                            <span class="position-detail-value">{{ trade.lot_size }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Commission</span>
-                            <span class="position-detail-value">฿{{ trade.commission|floatformat:2 }}</span>
+                        <div style="text-align: right;">
+                            <span>{{ trade.closed_at|date:"d M y H:i" }}</span>
                         </div>
                     </div>
-
-                    <div class="position-pnl">
-                        <div class="pnl-label">Final P&L</div>
-                        <div class="pnl-value {% if trade.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                            {% if trade.profit_loss >= 0 %}+{% endif %}฿{{ trade.profit_loss|floatformat:2 }}
-                        </div>
+                    
+                    <div style="font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 4px;">
+                        {{ trade.trade_account.account_name }}
                     </div>
                 </div>
                 {% endfor %}

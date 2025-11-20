@@ -81,12 +81,13 @@ class TradeTransactionAdmin(admin.ModelAdmin):
         'symbol',
         'position_type',
         'position_status',
+        'close_reason',
         'lot_size',
         'pnl_display',
         'opened_at',
         'closed_at'
     ]
-    list_filter = ['position_status', 'position_type', 'symbol', 'opened_at']
+    list_filter = ['position_status', 'position_type', 'close_reason', 'symbol', 'opened_at']
     search_fields = ['mt5_order_id', 'symbol', 'trade_account__account_name', 'trade_account__user__username']
     readonly_fields = ['created_at', 'updated_at']
     raw_id_fields = ['trade_account']
@@ -95,7 +96,7 @@ class TradeTransactionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Trade Information', {
-            'fields': ('trade_account', 'mt5_order_id', 'symbol', 'position_type', 'position_status')
+            'fields': ('trade_account', 'mt5_order_id', 'symbol', 'position_type', 'position_status', 'close_reason')
         }),
         ('Timing', {
             'fields': ('opened_at', 'closed_at')

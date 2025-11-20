@@ -53,9 +53,9 @@
             </div>
 
             <!-- Equity Curve Chart -->
-            <div class="chart-container">
+            <!-- <div class="chart-container">
                 <canvas id="equityChart"></canvas>
-            </div>
+            </div> -->
         </div>
 
         <!-- Open Positions Section -->
@@ -66,47 +66,38 @@
         <div id="open-positions-container">
             {% if open_positions %}
                 {% for position in open_positions %}
-                <div class="position-card glass-card fade-in">
-                    <div class="position-header">
-                        <span class="position-symbol">{{ position.symbol }}</span>
-                        <span class="position-type {{ position.position_type|lower }}">
-                            {{ position.get_position_type_display }}
-                        </span>
-                    </div>
-
-                    <div class="position-details">
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Order ID</span>
-                            <span class="position-detail-value">#{{ position.mt5_order_id }}</span>
+                <div class="position-row glass-card fade-in" style="padding: 12px 16px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; font-weight: 600; color: #ffffff;">{{ position.symbol }}</span>
+                            <span class="position-type {{ position.position_type|lower }}" style="font-size: 12px; padding: 2px 8px;">
+                                {{ position.get_position_type_display }}
+                            </span>
                         </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Open Time</span>
-                            <span class="position-detail-value">{{ position.opened_at|date:"d M y H:i" }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Entry Price</span>
-                            <span class="position-detail-value">{{ position.entry_price }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Lot Size</span>
-                            <span class="position-detail-value">{{ position.lot_size }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">TP</span>
-                            <span class="position-detail-value text-profit">{{ position.take_profit|default:"—" }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">SL</span>
-                            <span class="position-detail-value text-loss">{{ position.stop_loss|default:"—" }}</span>
+                        <div style="text-align: right;">
+                            <div class="{% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 18px; font-weight: 600;">
+                                {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                            </div>
                         </div>
                     </div>
-
-                    <div class="position-pnl">
-                        <div class="pnl-label">Current P&L</div>
-                        <div class="pnl-value {% if position.profit_loss >= 0 %}text-profit glow-profit{% else %}text-loss glow-loss{% endif %}">
-                            {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                        <div>
+                            <span style="opacity: 0.6;">Sell {{ position.lot_size }} lot at {{ position.entry_price }}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span>{{ position.opened_at|date:"d M y H:i" }}</span>
                         </div>
                     </div>
+                    
+                    <!-- <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+                        <div>
+                            <span style="color: rgba(255, 255, 255, 0.6);">TP</span>
+                            <span style="margin-left: 4px;color: rgba(255, 255, 255, 0.6);">{{ position.take_profit|default:"—" }}</span>
+                            <span style="color: rgba(255, 255, 255, 0.6); margin-left: 12px;">SL</span>
+                            <span style="margin-left: 4px;color: rgba(255, 255, 255, 0.6);">{{ position.stop_loss|default:"—" }}</span>
+                        </div>
+                    </div> -->
                 </div>
                 {% endfor %}
             {% else %}
@@ -127,37 +118,32 @@
         <div id="trade-history-container">
             {% if closed_positions %}
                 {% for position in closed_positions %}
-                <div class="position-card glass-card fade-in">
-                    <div class="position-header">
-                        <span class="position-symbol">{{ position.symbol }}</span>
-                        <span class="position-type {{ position.position_type|lower }}">
-                            {{ position.get_position_type_display }}
-                        </span>
-                    </div>
-
-                    <div class="position-details">
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Order ID</span>
-                            <span class="position-detail-value">#{{ position.mt5_order_id }}</span>
+                <div class="position-row glass-card fade-in" style="padding: 12px 16px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; font-weight: 600; color: #ffffff;">{{ position.symbol }}</span>
+                            <span class="position-type {{ position.position_type|lower }}" style="font-size: 12px; padding: 2px 8px;">
+                                {{ position.get_position_type_display }}    
+                            </span>
+                            {% if position.close_reason %}
+                            <span class="{% if position.close_reason == 'TP' %}text-profit{% elif position.close_reason == 'SL' %}text-loss{% else %}text-secondary{% endif %}" style="font-size: 12px; padding: 2px 8px; border: 1px solid currentColor; border-radius: 4px;">
+                                {{ position.get_close_reason_display }}
+                            </span>
+                            {% endif %}
                         </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Closed</span>
-                            <span class="position-detail-value">{{ position.closed_at|date:"d M y H:i" }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Entry</span>
-                            <span class="position-detail-value">{{ position.entry_price }}</span>
-                        </div>
-                        <div class="position-detail-item">
-                            <span class="position-detail-label">Exit</span>
-                            <span class="position-detail-value">{{ position.exit_price }}</span>
+                        <div style="text-align: right;">
+                            <div class="{% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 18px; font-weight: 600;">
+                                {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                            </div>
                         </div>
                     </div>
-
-                    <div class="position-pnl">
-                        <div class="pnl-label">Final P&L</div>
-                        <div class="pnl-value {% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                            {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                        <div>
+                            <span style="opacity: 0.6;">{{ position.get_position_type_display }} {{ position.lot_size }} lot at {{ position.entry_price }}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span>{{ position.closed_at|date:"d M y H:i" }}</span>
                         </div>
                     </div>
                 </div>

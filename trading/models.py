@@ -26,6 +26,13 @@ class PositionStatus(models.TextChoices):
     PENDING = 'PENDING', 'Pending'
 
 
+class CloseReason(models.TextChoices):
+    MANUAL = 'MANUAL', 'Manual'
+    TAKE_PROFIT = 'TP', 'TP'
+    STOP_LOSS = 'SL', 'SL'
+    MARGIN_CALL = 'MARGIN_CALL', 'Margin Call'
+
+
 class SubscriptionStatus(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
     EXPIRED = 'EXPIRED', 'Expired'
@@ -176,6 +183,15 @@ class TradeTransaction(TimeStampedModel):
     # Timing
     opened_at = models.DateTimeField(db_index=True)
     closed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    
+    # Close reason
+    close_reason = models.CharField(
+        max_length=20,
+        choices=CloseReason.choices,
+        null=True,
+        blank=True,
+        help_text="Reason for closing the position"
+    )
     
     # Prices
     entry_price = models.DecimalField(max_digits=19, decimal_places=4)
