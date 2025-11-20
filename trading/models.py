@@ -49,7 +49,7 @@ class BotStatus(models.TextChoices):
 # User Profile Model
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    line_uuid = models.CharField(max_length=100, unique=True, db_index=True)
+    line_uuid = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     line_display_name = models.CharField(max_length=200, blank=True)
     line_picture_url = models.URLField(max_length=500, blank=True)
     first_name = models.CharField(max_length=100)
@@ -63,6 +63,10 @@ class UserProfile(TimeStampedModel):
 
     def __str__(self):
         return f"{self.user.username} - {self.first_name} {self.last_name}"
+    
+    def is_line_connected(self):
+        """Check if LINE account is connected"""
+        return self.line_uuid and not self.line_uuid.startswith('temp_')
 
 
 # Subscription Package Model

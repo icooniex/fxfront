@@ -28,20 +28,65 @@
             <div class="divider"></div>
 
             <div class="mb-2">
-                <span class="text-muted" style="font-size: 13px;">LINE ID</span>
-                <p class="mb-1" style="font-size: 14px;">{{ user.profile.line_uuid|truncatechars:20 }}</p>
-            </div>
-
-            {% if user.profile.phone_number %}
-            <div class="mb-2">
                 <span class="text-muted" style="font-size: 13px;">เบอร์โทรศัพท์</span>
-                <p class="mb-1" style="font-size: 14px;">{{ user.profile.phone_number }}</p>
+                <p class="mb-1" style="font-size: 14px;">{{ user.profile.phone_number|default:"ไม่ได้ระบุ" }}</p>
             </div>
-            {% endif %}
 
             <div class="mb-0">
                 <span class="text-muted" style="font-size: 13px;">สมัครเมื่อ</span>
                 <p class="mb-0" style="font-size: 14px;">{{ user.date_joined|date:"d M Y" }}</p>
+            </div>
+        </div>
+
+        <!-- LINE Connection Card -->
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.15s;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <h5 class="mb-1"><i class="bi bi-line me-2" style="color: #00c300;"></i>LINE Notification</h5>
+                    <p class="text-secondary mb-0" style="font-size: 13px;">เชื่อมต่อ LINE เพื่อรับการแจ้งเตือน</p>
+                </div>
+            </div>
+
+            {% if user.profile.is_line_connected %}
+            <!-- LINE Connected -->
+            <div class="p-3 mb-3" style="background: rgba(0, 195, 0, 0.05); border: 1px solid rgba(0, 195, 0, 0.2); border-radius: 12px;">
+                <div class="d-flex align-items-center">
+                    {% if user.profile.line_picture_url %}
+                    <img src="{{ user.profile.line_picture_url }}" alt="LINE Avatar" 
+                         style="width: 40px; height: 40px; border-radius: 50%; margin-right: 12px;">
+                    {% else %}
+                    <div class="d-flex align-items-center justify-content-center" 
+                         style="width: 40px; height: 40px; background: rgba(0, 195, 0, 0.1); border-radius: 50%; margin-right: 12px;">
+                        <i class="bi bi-line" style="font-size: 20px; color: #00c300;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ user.profile.line_display_name|default:"LINE User" }}</p>
+                        <p class="mb-0 text-success" style="font-size: 12px;"><i class="bi bi-check-circle me-1"></i>เชื่อมต่อแล้ว</p>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger-glass" onclick="disconnectLine()">
+                        <i class="bi bi-x-circle me-1"></i>ยกเลิก
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <!-- LINE Not Connected -->
+            <div class="p-3 mb-3" style="background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); border-radius: 12px;">
+                <div class="text-center">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 32px; color: #ffc107;"></i>
+                    <p class="mt-2 mb-3 text-secondary" style="font-size: 14px;">ยังไม่ได้เชื่อมต่อ LINE<br>คุณจะไม่ได้รับการแจ้งเตือนเทรด</p>
+                    <a href="{% url 'line_connect' %}" class="btn btn-primary-blue btn-sm">
+                        <i class="bi bi-line me-2"></i>เชื่อมต่อ LINE
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-3">
+                <p class="text-muted mb-0" style="font-size: 12px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    การเชื่อมต่อ LINE จะช่วยให้คุณได้รับการแจ้งเตือนเมื่อมีการเทรดใหม่หรือเหตุการณ์สำคัญ
+                </p>
             </div>
         </div>
 
@@ -150,6 +195,16 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function disconnectLine() {
+        if (confirm('คุณต้องการยกเลิกการเชื่อมต่อ LINE หรือไม่?\nคุณจะไม่ได้รับการแจ้งเตือนอีกต่อไป')) {
+            window.location.href = '{% url "line_disconnect" %}';
+        }
+    }
+</script>
 {% endblock %}
 
 {% block bottom_nav %}

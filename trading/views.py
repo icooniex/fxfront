@@ -64,31 +64,29 @@ def register_view(request):
             first_name = request.POST.get('first_name')
             last_name = request.POST.get('last_name')
             phone = request.POST.get('phone', '')
-            line_uuid = request.POST.get('line_uuid')
             
             # Validation
             if User.objects.filter(username=username).exists():
                 messages.error(request, 'Username นี้ถูกใช้งานแล้ว')
                 return render(request, 'auth/register.html', {'step': 2})
             
-            if not line_uuid:
-                messages.error(request, 'กรุณาเชื่อมต่อ LINE')
-                return render(request, 'auth/register.html', {'step': 2})
-            
             # Create user
             user = User.objects.create_user(username=username, password=password)
             
-            # Create profile
+            # Create profile (without LINE for now)
+            # Generate a temporary unique LINE UUID (will be updated when user connects LINE later)
+            temp_line_uuid = f'temp_{user.id}_{timezone.now().timestamp()}'
+            
             UserProfile.objects.create(
                 user=user,
-                line_uuid=line_uuid,
+                line_uuid=temp_line_uuid,
                 first_name=first_name,
                 last_name=last_name,
                 phone_number=phone
             )
             
             # Auto login
-            login(request, user)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, 'สมัครสมาชิกสำเร็จ')
             return redirect('subscription_packages')
     
@@ -107,10 +105,25 @@ def logout_view(request):
 # ============================================
 
 def line_login_view(request):
-    """Redirect to LINE OAuth for authentication"""
+    """Redirect to LINE OAuth for authentication or connection"""
     if not settings.LINE_CHANNEL_ID:
-        messages.error(request, 'LINE Login ยังไม่ได้ตั้งค่า')
+        messages.warning(request, 'LINE Login ยังไม่ได้ตั้งค่า กรุณาติดต่อผู้ดูแลระบบ')
+        # Redirect back to where user came from
+        referer = request.META.get('HTTP_REFERER')
+        if referer and 'register' in referer:
+            return redirect('register')
+        elif referer and 'profile' in referer:
+            return redirect('profile')
         return redirect('login')
+    
+    # Store where user came from (for redirect after LINE auth)
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'register' in referer:
+        request.session['line_login_source'] = 'register'
+    elif 'profile' in referer:
+        request.session['line_login_source'] = 'profile'
+    else:
+        request.session['line_login_source'] = 'login'
     
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
@@ -173,6 +186,9 @@ def line_callback_view(request):
         if not line_user_id:
             raise Exception('ไม่สามารถรับข้อมูลผู้ใช้จาก LINE')
         
+        # Get source from session
+        source = request.session.get('line_login_source', 'login')
+        
         # Check if user exists with this LINE ID
         try:
             user_profile = UserProfile.objects.get(line_uuid=line_user_id)
@@ -189,22 +205,72 @@ def line_callback_view(request):
             return redirect('dashboard')
             
         except UserProfile.DoesNotExist:
-            # New user - store LINE data in session and redirect to registration
-            request.session['line_user_data'] = {
-                'line_uuid': line_user_id,
-                'display_name': display_name,
-                'picture_url': picture_url,
-            }
-            messages.info(request, 'กรุณากรอกข้อมูลเพื่อสมัครสมาชิก')
-            return redirect('register')
+            # Check if this is for LINE connection (user already logged in)
+            if source == 'profile' and request.user.is_authenticated:
+                # Connect LINE to existing account
+                user_profile = request.user.profile
+                
+                # Check if LINE ID is already used by another account
+                if UserProfile.objects.filter(line_uuid=line_user_id).exists():
+                    messages.error(request, 'LINE ID นี้ถูกเชื่อมต่อกับบัญชีอื่นแล้ว')
+                    return redirect('profile')
+                
+                # Update user profile with LINE data
+                user_profile.line_uuid = line_user_id
+                user_profile.line_display_name = display_name
+                user_profile.line_picture_url = picture_url
+                user_profile.save()
+                
+                messages.success(request, f'เชื่อมต่อ LINE สำเร็จ! ยินดีต้อนรับ {display_name}')
+                return redirect('profile')
+            
+            # User not found - show error and redirect to login
+            messages.error(request, 'ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้ กรุณาสมัครสมาชิกก่อน')
+            return redirect('login')
     
     except Exception as e:
         messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+        
+        # Redirect back to source
+        source = request.session.get('line_login_source', 'login')
+        request.session.pop('line_login_source', None)
+        
+        if source == 'register':
+            return redirect('register?step=2')
         return redirect('login')
     
     finally:
         # Clear state from session
         request.session.pop('line_login_state', None)
+        request.session.pop('line_login_source', None)
+
+
+@login_required
+def line_connect_view(request):
+    """Alias for line_login_view for clarity"""
+    return line_login_view(request)
+
+
+@login_required
+def line_disconnect_view(request):
+    """Disconnect LINE from user account"""
+    try:
+        user_profile = request.user.profile
+        
+        # Generate new temp LINE UUID
+        temp_line_uuid = f'temp_{request.user.id}_{timezone.now().timestamp()}'
+        
+        # Clear LINE data
+        user_profile.line_uuid = temp_line_uuid
+        user_profile.line_display_name = ''
+        user_profile.line_picture_url = ''
+        user_profile.save()
+        
+        messages.success(request, 'ยกเลิกการเชื่อมต่อ LINE เรียบร้อย')
+    except Exception as e:
+        messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+    
+    return redirect('profile')
 
 
 # ============================================

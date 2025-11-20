@@ -11,6 +11,8 @@ urlpatterns = [
     # LINE Login
     path('auth/line/login/', views.line_login_view, name='line_login'),
     path('auth/line/callback/', views.line_callback_view, name='line_callback'),
+    path('auth/line/connect/', views.line_connect_view, name='line_connect'),
+    path('auth/line/disconnect/', views.line_disconnect_view, name='line_disconnect'),
     
     # Dashboard
     path('dashboard/', views.dashboard_view, name='dashboard'),

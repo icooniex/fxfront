@@ -73,25 +73,12 @@
         </div>
 
         {% elif step == 2 %}
-        <!-- Step 2: LINE Auth & User Info -->
+        <!-- Step 2: User Info -->
         <div class="glass-card fade-in" style="animation-delay: 0.2s;">
-            <!-- LINE Authentication -->
-            <div class="text-center mb-4 p-4" style="background: rgba(0, 195, 0, 0.05); border: 1px solid rgba(0, 195, 0, 0.2); border-radius: 16px;">
-                <i class="bi bi-line" style="font-size: 48px; color: #00c300;"></i>
-                <p class="text-secondary mt-2 mb-3">เชื่อมต่อกับ LINE เพื่อยืนยันตัวตน</p>
-                <button type="button" class="btn btn-primary-blue" id="lineAuthBtn">
-                    <i class="bi bi-line me-2"></i>เชื่อมต่อ LINE
-                </button>
-                <p class="text-muted mt-2 mb-0" style="font-size: 12px;">
-                    <i class="bi bi-check-circle text-profit me-1"></i>เชื่อมต่อสำเร็จ
-                </p>
-            </div>
-
             <!-- User Info Form -->
             <form method="post" action="{% url 'register' %}">
                 {% csrf_token %}
                 <input type="hidden" name="step" value="2">
-                <input type="hidden" name="line_uuid" id="lineUuid" value="">
 
                 <div class="mb-3">
                     <label for="username" class="form-label">Username</label>
@@ -161,20 +148,6 @@
         }
     });
     {% elif step == 2 %}
-    // Step 2: LINE Authentication
-    document.getElementById('lineAuthBtn').addEventListener('click', function() {
-        // LINE LIFF Authentication - to be implemented
-        showToast('กำลังเชื่อมต่อกับ LINE...', 'info');
-        
-        // Simulate LINE auth success
-        setTimeout(() => {
-            document.getElementById('lineUuid').value = 'U' + Math.random().toString(36).substr(2, 32);
-            this.disabled = true;
-            this.innerHTML = '<i class="bi bi-check-circle me-2"></i>เชื่อมต่อแล้ว';
-            showToast('เชื่อมต่อ LINE สำเร็จ', 'success');
-        }, 1000);
-    });
-
     // Password validation
     document.querySelector('form').addEventListener('submit', function(e) {
         const password = document.getElementById('password').value;
@@ -186,7 +159,9 @@
             return false;
         }
         
-        if (!document.getElementById('lineUuid').value) {
+        // Check LINE connection
+        const lineUuid = document.getElementById('lineUuid').value;
+        if (!lineUuid) {
             e.preventDefault();
             showToast('กรุณาเชื่อมต่อ LINE ก่อน', 'error');
             return false;
