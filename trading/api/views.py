@@ -309,9 +309,15 @@ def get_account_live_data(request, account_id):
     )
     
     total_trades = all_closed.count()
-    total_pnl = sum(t.profit_loss for t in all_closed)
+    closed_pnl = sum(t.profit_loss for t in all_closed)
     winning_trades = all_closed.filter(profit_loss__gt=0).count()
     win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    # Calculate current P&L from open positions
+    current_open_pnl = sum(pos.profit_loss for pos in open_positions)
+    
+    # Total P&L = Closed P&L + Current Open P&L
+    total_pnl = closed_pnl + current_open_pnl
     
     # Format open positions
     open_positions_data = []
