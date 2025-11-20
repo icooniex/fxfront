@@ -316,10 +316,7 @@
             const balanceEl = document.querySelector('.account-balance');
             if (balanceEl) {
                 const formatted = '฿' + balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                if (balanceEl.textContent.trim() !== formatted) {
-                    balanceEl.textContent = formatted;
-                    this.flashElement(balanceEl);
-                }
+                balanceEl.textContent = formatted;
             }
         },
         
@@ -328,28 +325,20 @@
             const pnlEl = document.getElementById('total-pnl');
             if (pnlEl) {
                 const formatted = (stats.total_pnl >= 0 ? '+' : '') + '฿' + stats.total_pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                if (pnlEl.textContent.trim() !== formatted) {
-                    pnlEl.textContent = formatted;
-                    pnlEl.className = 'dashboard-stat-value ' + (stats.total_pnl >= 0 ? 'text-profit' : 'text-loss');
-                    this.flashElement(pnlEl);
-                }
+                pnlEl.textContent = formatted;
+                pnlEl.className = 'dashboard-stat-value ' + (stats.total_pnl >= 0 ? 'text-profit' : 'text-loss');
             }
             
             // Update Total Trades
             const tradesEl = document.getElementById('total-trades');
-            if (tradesEl && tradesEl.textContent.trim() !== stats.total_trades.toString()) {
+            if (tradesEl) {
                 tradesEl.textContent = stats.total_trades;
-                this.flashElement(tradesEl);
             }
             
             // Update Win Rate
             const winRateEl = document.getElementById('win-rate');
             if (winRateEl) {
-                const formatted = stats.win_rate + '%';
-                if (winRateEl.textContent.trim() !== formatted) {
-                    winRateEl.textContent = formatted;
-                    this.flashElement(winRateEl);
-                }
+                winRateEl.textContent = stats.win_rate + '%';
             }
         },
         
