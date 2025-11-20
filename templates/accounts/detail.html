@@ -257,12 +257,11 @@
     // Real-time Update System
     const AccountLiveUpdate = {
         accountId: {{ account.id }},
-        updateInterval: 3000, // 3 seconds
+        updateInterval: 1000, // 1 second
         intervalId: null,
         
         init() {
             this.startAutoUpdate();
-            console.log('Real-time updates started');
         },
         
         startAutoUpdate() {
@@ -279,7 +278,6 @@
             if (this.intervalId) {
                 clearInterval(this.intervalId);
                 this.intervalId = null;
-                console.log('Real-time updates stopped');
             }
         },
         
@@ -318,7 +316,7 @@
             const balanceEl = document.querySelector('.account-balance');
             if (balanceEl) {
                 const formatted = '฿' + balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                if (balanceEl.textContent !== formatted) {
+                if (balanceEl.textContent.trim() !== formatted) {
                     balanceEl.textContent = formatted;
                     this.flashElement(balanceEl);
                 }
@@ -339,7 +337,7 @@
             
             // Update Total Trades
             const tradesEl = document.querySelector('.dashboard-stats .dashboard-stat:nth-child(2) .dashboard-stat-value');
-            if (tradesEl && tradesEl.textContent !== stats.total_trades.toString()) {
+            if (tradesEl && tradesEl.textContent.trim() !== stats.total_trades.toString()) {
                 tradesEl.textContent = stats.total_trades;
                 this.flashElement(tradesEl);
             }
@@ -348,7 +346,7 @@
             const winRateEl = document.querySelector('.dashboard-stats .dashboard-stat:nth-child(3) .dashboard-stat-value');
             if (winRateEl) {
                 const formatted = stats.win_rate + '%';
-                if (winRateEl.textContent !== formatted) {
+                if (winRateEl.textContent.trim() !== formatted) {
                     winRateEl.textContent = formatted;
                     this.flashElement(winRateEl);
                 }

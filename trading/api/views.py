@@ -365,3 +365,65 @@ def get_account_live_data(request, account_id):
         },
         'timestamp': timezone.now().isoformat()
     })
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_dashboard_live_data(request):
+    """
+    Get real-time dashboard data for all user accounts.
+    Returns summary data for each trading account.
+    """
+    # Get all active accounts for user
+    accounts = UserTradeAccount.objects.filter(
+        user=request.user,
+        is_active=True
+    ).order_by('-created_at')
+    
+    accounts_data = []
+    for account in accounts:
+        # Get open positions count and current P&L
+        open_positions = TradeTransaction.objects.filter(
+            trade_account=account,
+            position_status='OPEN',
+            is_active=True
+        )
+        
+        open_count = open_positions.count()
+        current_pnl = sum(pos.profit_loss for pos in open_positions)
+        
+        # Get total stats
+        all_closed = TradeTransaction.objects.filter(
+            trade_account=account,
+            position_status='CLOSED',
+            is_active=True
+        )
+        
+        total_trades = all_closed.count()
+        
+        # Calculate days until expiry
+        days_until_expiry = 0
+        if account.subscription_expiry:
+            delta = account.subscription_expiry - timezone.now()
+            days_until_expiry = max(0, delta.days)
+        
+        accounts_data.append({
+            'id': account.id,
+            'account_name': account.account_name,
+            'broker_name': account.broker_name,
+            'balance': float(account.current_balance),
+            'bot_status': account.bot_status,
+            'bot_status_display': account.get_bot_status_display(),
+            'open_positions_count': open_count,
+            'current_pnl': float(current_pnl),
+            'total_trades': total_trades,
+            'days_until_expiry': days_until_expiry,
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'accounts': accounts_data,
+        },
+        'timestamp': timezone.now().isoformat()
+    })

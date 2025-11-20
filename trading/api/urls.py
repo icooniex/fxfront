@@ -13,4 +13,5 @@ urlpatterns = [
     
     # Real-time account data (frontend)
     path('account/<int:account_id>/live/', views.get_account_live_data, name='api_account_live_data'),
+    path('dashboard/live/', views.get_dashboard_live_data, name='api_dashboard_live_data'),
 ]
