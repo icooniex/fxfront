@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import transaction
+from django.db.models import Sum, Count, Q
 from decimal import Decimal, InvalidOperation
 from trading.models import TradeTransaction, UserTradeAccount
 from .authentication import require_bot_api_key
@@ -765,3 +766,152 @@ def get_dashboard_live_data(request):
         },
         'timestamp': timezone.now().isoformat()
     })
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_account_open_positions_only(request, account_id):
+    """
+    OPTIMIZED: Get ONLY open positions for live updates.
+    This is much faster than get_account_live_data.
+    Use this for frequent polling (every 1 second).
+    """
+    try:
+        account = UserTradeAccount.objects.get(
+            id=account_id,
+            user=request.user,
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Account not found'
+        }, status=404)
+    
+    # Use aggregation for fast stats
+    open_stats = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='OPEN',
+        is_active=True
+    ).aggregate(
+        open_count=Count('id'),
+        current_pnl=Sum('profit_loss')
+    )
+    
+    # Get open positions with only essential fields
+    open_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='OPEN',
+        is_active=True
+    ).only(
+        'id', 'mt5_order_id', 'symbol', 'position_type',
+        'profit_loss', 'updated_at'
+    ).order_by('-opened_at')[:100]  # Limit to 100 most recent
+    
+    positions_data = [{
+        'id': pos.id,
+        'mt5_order_id': pos.mt5_order_id,
+        'symbol': pos.symbol,
+        'position_type': pos.position_type,
+        'profit_loss': float(pos.profit_loss),
+        'updated_at': pos.updated_at.isoformat(),
+    } for pos in open_positions]
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'balance': float(account.current_balance),
+            'open_count': open_stats['open_count'] or 0,
+            'current_open_pnl': float(open_stats['current_pnl'] or 0),
+            'open_positions': positions_data,
+        },
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_account_closed_positions(request, account_id):
+    """
+    Get closed positions history.
+    Call this only when needed (not in polling loop).
+    """
+    try:
+        account = UserTradeAccount.objects.get(
+            id=account_id,
+            user=request.user,
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Account not found'
+        }, status=404)
+    
+    # Get pagination params
+    limit = int(request.GET.get('limit', 20))
+    offset = int(request.GET.get('offset', 0))
+    
+    # Get closed positions with pagination
+    closed_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    ).order_by('-closed_at')[offset:offset+limit]
+    
+    # Get total count
+    total_count = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    ).count()
+    
+    # Get closed stats using aggregation
+    closed_stats = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    ).aggregate(
+        total_trades=Count('id'),
+        closed_pnl=Sum('profit_loss'),
+        winning_trades=Count('id', filter=Q(profit_loss__gt=0))
+    )
+    
+    total_trades = closed_stats['total_trades'] or 0
+    closed_pnl = closed_stats['closed_pnl'] or Decimal('0')
+    winning_trades = closed_stats['winning_trades'] or 0
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    positions_data = [{
+        'id': pos.id,
+        'mt5_order_id': pos.mt5_order_id,
+        'symbol': pos.symbol,
+        'position_type': pos.position_type,
+        'position_type_display': pos.get_position_type_display(),
+        'close_reason': pos.close_reason,
+        'close_reason_display': pos.get_close_reason_display() if pos.close_reason else None,
+        'entry_price': str(pos.entry_price),
+        'lot_size': str(pos.lot_size),
+        'profit_loss': float(pos.profit_loss),
+        'closed_at': pos.closed_at.strftime('%d %b %y %H:%M') if pos.closed_at else None,
+    } for pos in closed_positions]
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'stats': {
+                'closed_pnl': float(closed_pnl),
+                'total_trades': total_trades,
+                'win_rate': round(win_rate, 1),
+            },
+            'closed_positions': positions_data,
+            'pagination': {
+                'total': total_count,
+                'limit': limit,
+                'offset': offset,
+                'has_more': (offset + limit) < total_count,
+            }
+        },
+        'timestamp': timezone.now().isoformat()
+    })
+
