@@ -88,7 +88,7 @@ class AccountLiveUpdate {
                 } else {
                     // Just update P&L values (fast)
                     this.updateBalance(data.balance);
-                    this.updateOpenPnL(data.current_open_pnl);
+                    this.updateTotalPnL(data.total_pnl);
                     this.updateOpenPositionsPnL(data.open_positions);
                     this.openPositionIds = currentIds;
                 }
@@ -102,6 +102,15 @@ class AccountLiveUpdate {
         const elem = document.querySelector('.account-balance');
         if (elem) {
             elem.textContent = `฿${balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
+
+    updateTotalPnL(totalPnl) {
+        const elem = document.getElementById('total-pnl');
+        if (elem) {
+            const formatted = `${totalPnl >= 0 ? '+' : ''}฿${Math.abs(totalPnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            elem.textContent = formatted;
+            elem.className = `dashboard-stat-value ${totalPnl >= 0 ? 'text-profit' : 'text-loss'}`;
         }
     }
 

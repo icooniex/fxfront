@@ -802,8 +802,21 @@ def get_account_open_positions_only(request, account_id):
         is_active=True
     ).aggregate(
         open_count=Count('id'),
-        current_pnl=Sum('profit_loss')
+        current_open_pnl=Sum('profit_loss')
     )
+    
+    # Get closed P&L for total calculation
+    closed_stats = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='CLOSED',
+        is_active=True
+    ).aggregate(
+        closed_pnl=Sum('profit_loss')
+    )
+    
+    current_open_pnl = open_stats['current_open_pnl'] or Decimal('0')
+    closed_pnl = closed_stats['closed_pnl'] or Decimal('0')
+    total_pnl = closed_pnl + current_open_pnl
     
     # Get open positions with only essential fields
     open_positions = TradeTransaction.objects.filter(
@@ -829,7 +842,8 @@ def get_account_open_positions_only(request, account_id):
         'data': {
             'balance': float(account.current_balance),
             'open_count': open_stats['open_count'] or 0,
-            'current_open_pnl': float(open_stats['current_pnl'] or 0),
+            'current_open_pnl': float(current_open_pnl),
+            'total_pnl': float(total_pnl),
             'open_positions': positions_data,
         },
         'timestamp': timezone.now().isoformat()
