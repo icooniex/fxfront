@@ -67,13 +67,23 @@ class AccountLiveUpdate {
             if (result.status === 'success') {
                 const data = result.data;
                 
-                // Check if any positions were closed
+                // Get current position IDs from API
                 const currentIds = new Set(data.open_positions.map(p => p.id));
+                
+                // Check for closed positions (in cache but not in current)
                 const closedIds = [...this.openPositionIds].filter(id => !currentIds.has(id));
                 
-                if (closedIds.length > 0) {
-                    // Position(s) closed! Reload full data to get updated history
-                    console.log(`${closedIds.length} position(s) closed, reloading...`);
+                // Check for new positions (in current but not in cache)
+                const newIds = [...currentIds].filter(id => !this.openPositionIds.has(id));
+                
+                if (closedIds.length > 0 || newIds.length > 0) {
+                    // Position(s) closed or new position(s) opened! Reload full data
+                    if (closedIds.length > 0) {
+                        console.log(`${closedIds.length} position(s) closed, reloading...`);
+                    }
+                    if (newIds.length > 0) {
+                        console.log(`${newIds.length} new position(s) opened, reloading...`);
+                    }
                     await this.loadFullData();
                 } else {
                     // Just update P&L values (fast)
