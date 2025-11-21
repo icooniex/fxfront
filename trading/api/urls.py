@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # Order management
     path('orders/', views.create_update_order, name='api_create_update_order'),
+    path('orders/batch/', views.batch_create_update_orders, name='api_batch_orders'),
     
     # Account configuration
     path('account/<str:mt5_account_id>/config/', views.get_account_config, name='api_account_config'),

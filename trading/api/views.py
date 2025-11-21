@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.db import transaction
 from decimal import Decimal, InvalidOperation
 from trading.models import TradeTransaction, UserTradeAccount
 from .authentication import require_bot_api_key
@@ -216,6 +217,264 @@ def create_update_order(request):
         'action': 'created' if created else 'updated',
         'account_id': str(trade_account.mt5_account_id)
     }, status=201 if created else 200)
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def batch_create_update_orders(request):
+    """
+    Batch create or update multiple orders in a single request.
+    Much faster than calling create_update_order multiple times.
+    
+    Expected JSON format:
+    {
+        "mt5_account_id": "12345",
+        "current_balance": 10000.00,
+        "orders": [
+            {
+                "mt5_order_id": 123,
+                "symbol": "EURUSD",
+                "position_type": "BUY",
+                ...
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    if 'mt5_account_id' not in data:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'mt5_account_id is required'
+        }, status=400)
+    
+    if 'orders' not in data or not isinstance(data['orders'], list):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'orders must be a non-empty array'
+        }, status=400)
+    
+    if len(data['orders']) == 0:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'orders array cannot be empty'
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Process orders in a database transaction for atomicity
+    results = {
+        'created': [],
+        'updated': [],
+        'failed': []
+    }
+    
+    with transaction.atomic():
+        for idx, order_data in enumerate(data['orders']):
+            try:
+                # Validate mt5_order_id
+                if 'mt5_order_id' not in order_data:
+                    results['failed'].append({
+                        'index': idx,
+                        'order_id': None,
+                        'error': 'mt5_order_id is required'
+                    })
+                    continue
+                
+                mt5_order_id = order_data['mt5_order_id']
+                
+                # Check if order exists
+                try:
+                    existing_transaction = TradeTransaction.objects.get(
+                        trade_account=trade_account,
+                        mt5_order_id=mt5_order_id
+                    )
+                    is_update = True
+                except TradeTransaction.DoesNotExist:
+                    is_update = False
+                    # Validate required fields for new orders
+                    required_fields = ['symbol', 'position_type', 'opened_at', 'entry_price', 'lot_size']
+                    missing_fields = [f for f in required_fields if f not in order_data]
+                    
+                    if missing_fields:
+                        results['failed'].append({
+                            'index': idx,
+                            'order_id': mt5_order_id,
+                            'error': f"Missing required fields: {', '.join(missing_fields)}"
+                        })
+                        continue
+                
+                # Parse datetime fields
+                opened_at = None
+                if order_data.get('opened_at'):
+                    try:
+                        opened_at = parse_datetime(order_data['opened_at'])
+                        if not opened_at:
+                            raise ValueError("Invalid datetime format")
+                    except (ValueError, TypeError):
+                        results['failed'].append({
+                            'index': idx,
+                            'order_id': mt5_order_id,
+                            'error': 'Invalid opened_at datetime format'
+                        })
+                        continue
+                
+                closed_at = None
+                if order_data.get('closed_at'):
+                    try:
+                        closed_at = parse_datetime(order_data['closed_at'])
+                    except (ValueError, TypeError):
+                        results['failed'].append({
+                            'index': idx,
+                            'order_id': mt5_order_id,
+                            'error': 'Invalid closed_at datetime format'
+                        })
+                        continue
+                
+                # Convert decimal fields
+                decimal_fields = {}
+                try:
+                    if order_data.get('entry_price'):
+                        decimal_fields['entry_price'] = Decimal(str(order_data['entry_price']))
+                    if order_data.get('lot_size'):
+                        decimal_fields['lot_size'] = Decimal(str(order_data['lot_size']))
+                    if order_data.get('profit_loss') is not None:
+                        decimal_fields['profit_loss'] = Decimal(str(order_data['profit_loss']))
+                    if order_data.get('commission') is not None:
+                        decimal_fields['commission'] = Decimal(str(order_data['commission']))
+                    if order_data.get('swap_fee') is not None:
+                        decimal_fields['swap_fee'] = Decimal(str(order_data['swap_fee']))
+                    if order_data.get('exit_price'):
+                        decimal_fields['exit_price'] = Decimal(str(order_data['exit_price']))
+                    if order_data.get('take_profit'):
+                        decimal_fields['take_profit'] = Decimal(str(order_data['take_profit']))
+                    if order_data.get('stop_loss'):
+                        decimal_fields['stop_loss'] = Decimal(str(order_data['stop_loss']))
+                    if order_data.get('account_balance_at_close'):
+                        decimal_fields['account_balance_at_close'] = Decimal(str(order_data['account_balance_at_close']))
+                except (ValueError, InvalidOperation):
+                    results['failed'].append({
+                        'index': idx,
+                        'order_id': mt5_order_id,
+                        'error': 'Invalid decimal format in price/amount fields'
+                    })
+                    continue
+                
+                # Validate enums
+                if order_data.get('position_type') and order_data['position_type'] not in ['BUY', 'SELL']:
+                    results['failed'].append({
+                        'index': idx,
+                        'order_id': mt5_order_id,
+                        'error': 'Invalid position_type. Must be BUY or SELL'
+                    })
+                    continue
+                
+                if order_data.get('position_status') and order_data['position_status'] not in ['OPEN', 'CLOSED', 'PENDING']:
+                    results['failed'].append({
+                        'index': idx,
+                        'order_id': mt5_order_id,
+                        'error': 'Invalid position_status'
+                    })
+                    continue
+                
+                if order_data.get('close_reason') and order_data['close_reason'] not in ['MANUAL', 'TP', 'SL', 'MARGIN_CALL']:
+                    results['failed'].append({
+                        'index': idx,
+                        'order_id': mt5_order_id,
+                        'error': 'Invalid close_reason'
+                    })
+                    continue
+                
+                # Create or update
+                if is_update:
+                    # Update existing transaction
+                    trans = existing_transaction
+                    
+                    if order_data.get('position_status'):
+                        trans.position_status = order_data['position_status']
+                    if closed_at is not None:
+                        trans.closed_at = closed_at
+                    if order_data.get('close_reason'):
+                        trans.close_reason = order_data['close_reason']
+                    
+                    # Update decimal fields if provided
+                    for field, value in decimal_fields.items():
+                        setattr(trans, field, value)
+                    
+                    trans.save()
+                    results['updated'].append(mt5_order_id)
+                else:
+                    # Create new transaction
+                    TradeTransaction.objects.create(
+                        trade_account=trade_account,
+                        mt5_order_id=mt5_order_id,
+                        symbol=order_data['symbol'],
+                        position_type=order_data['position_type'],
+                        position_status=order_data.get('position_status', 'OPEN'),
+                        opened_at=opened_at,
+                        closed_at=closed_at,
+                        close_reason=order_data.get('close_reason'),
+                        entry_price=decimal_fields['entry_price'],
+                        lot_size=decimal_fields['lot_size'],
+                        exit_price=decimal_fields.get('exit_price'),
+                        take_profit=decimal_fields.get('take_profit'),
+                        stop_loss=decimal_fields.get('stop_loss'),
+                        profit_loss=decimal_fields.get('profit_loss', Decimal('0.0000')),
+                        commission=decimal_fields.get('commission', Decimal('0.0000')),
+                        swap_fee=decimal_fields.get('swap_fee', Decimal('0.0000')),
+                        account_balance_at_close=decimal_fields.get('account_balance_at_close')
+                    )
+                    results['created'].append(mt5_order_id)
+                    
+            except Exception as e:
+                results['failed'].append({
+                    'index': idx,
+                    'order_id': order_data.get('mt5_order_id'),
+                    'error': str(e)
+                })
+        
+        # Update account balance if provided
+        if data.get('current_balance'):
+            try:
+                trade_account.current_balance = Decimal(str(data['current_balance']))
+            except (ValueError, InvalidOperation):
+                pass
+        
+        # Update last sync time
+        trade_account.last_sync_datetime = timezone.now()
+        trade_account.save(update_fields=['last_sync_datetime', 'current_balance'])
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': f"Processed {len(data['orders'])} orders",
+        'results': {
+            'created': len(results['created']),
+            'updated': len(results['updated']),
+            'failed': len(results['failed']),
+            'created_ids': results['created'],
+            'updated_ids': results['updated'],
+            'failed_orders': results['failed']
+        },
+        'account_id': str(trade_account.mt5_account_id)
+    }, status=200)
 
 
 @require_http_methods(["GET"])
