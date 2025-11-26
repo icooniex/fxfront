@@ -58,6 +58,57 @@
             </div> -->
         </div>
 
+        <!-- Bot Configuration Section -->
+        <div class="section-header">
+            <h3 class="section-title">🤖 Bot Configuration</h3>
+        </div>
+
+        <div class="glass-card fade-in mb-3">
+            {% if account.active_bot %}
+            <!-- Active Bot Display -->
+            <div class="d-flex align-items-start justify-content-between mb-3">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h5 class="mb-0">{{ account.active_bot.name }}</h5>
+                        <span class="badge bg-success">กำลังใช้งาน</span>
+                        <span class="badge bg-primary">v{{ account.active_bot.version }}</span>
+                    </div>
+                    <p class="text-secondary small mb-2">{{ account.active_bot.description|truncatewords:15 }}</p>
+                    {% if account.bot_activated_at %}
+                    <div class="text-muted small">
+                        <i class="bi bi-clock"></i> เปิดใช้งานเมื่อ: {{ account.bot_activated_at|date:"d M Y H:i" }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'bot_detail' account.active_bot.id %}" class="btn btn-sm btn-outline-primary flex-grow-1">
+                    <i class="bi bi-info-circle"></i> ดูรายละเอียด Bot
+                </a>
+                <form method="post" action="{% url 'account_bot_deactivate' account.id %}" class="flex-grow-1">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('คุณต้องการปิดใช้งาน Bot นี้หรือไม่?')">
+                        <i class="bi bi-x-circle"></i> ปิดใช้งาน
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <!-- No Bot Active - Show Selection -->
+            <div class="text-center py-2 mb-3">
+                <i class="bi bi-robot display-4 text-muted mb-2"></i>
+                <h6 class="text-secondary">ยังไม่ได้เลือก Bot</h6>
+                <p class="text-muted small mb-0">เลือก Bot เพื่อเริ่มการเทรดอัตโนมัติ</p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'bots_list' %}" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> เลือก Bot
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
         <!-- Open Positions Section -->
         <div class="section-header">
             <h3 class="section-title">Open Positions ({{ open_positions.count }})</h3>

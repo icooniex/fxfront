@@ -14,7 +14,9 @@ from .models import (
     SubscriptionPackage,
     UserTradeAccount,
     TradeTransaction,
-    SubscriptionPayment
+    SubscriptionPayment,
+    BotStrategy,
+    BacktestResult
 )
 
 
@@ -560,3 +562,130 @@ def trades_history_view(request):
         'has_more': total_trades > 100
     }
     return render(request, 'trades/history.html', context)
+
+
+# ============================================
+# Bot Strategy Views
+# ============================================
+
+def bots_list_view(request):
+    """List all available bot strategies"""
+    # Get all active bot strategies with prefetch
+    bots = BotStrategy.objects.filter(
+        is_active=True,
+        status='ACTIVE'
+    ).prefetch_related('allowed_packages').order_by('-created_at')
+    
+    # Add latest backtest result to each bot
+    for bot in bots:
+        bot.latest_backtest = bot.get_latest_backtest()
+    
+    context = {
+        'bots': bots
+    }
+    return render(request, 'bots/list.html', context)
+
+
+def bot_detail_view(request, bot_id):
+    """Detailed view of a specific bot strategy"""
+    bot = get_object_or_404(
+        BotStrategy.objects.prefetch_related('allowed_packages'),
+        id=bot_id,
+        is_active=True
+    )
+    
+    # Get latest backtest result
+    latest_backtest = bot.get_latest_backtest()
+    
+    # Get user's accounts if logged in (to check compatibility)
+    user_accounts = None
+    if request.user.is_authenticated:
+        user_accounts = UserTradeAccount.objects.filter(
+            user=request.user,
+            is_active=True,
+            subscription_status='ACTIVE'
+        )
+    
+    context = {
+        'bot': bot,
+        'latest_backtest': latest_backtest,
+        'user_accounts': user_accounts,
+        'allowed_packages': bot.allowed_packages.all()
+    }
+    return render(request, 'bots/detail.html', context)
+
+
+@login_required
+def account_bot_activate_view(request, account_id):
+    """Activate a bot for a specific account"""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Get account and verify ownership
+    account = get_object_or_404(
+        UserTradeAccount,
+        id=account_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Get bot_id from POST
+    bot_id = request.POST.get('bot_id')
+    if not bot_id:
+        messages.error(request, 'กรุณาเลือก Bot')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Get bot strategy
+    bot = get_object_or_404(BotStrategy, id=bot_id, is_active=True, status='ACTIVE')
+    
+    # Validate subscription package
+    if not bot.allowed_packages.filter(id=account.subscription_package.id).exists():
+        messages.error(request, f'แพ็คเกจของคุณไม่รองรับ Bot นี้')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Validate subscription is active
+    if account.subscription_status != 'ACTIVE':
+        messages.error(request, 'บัญชีนี้ไม่ได้เปิดใช้งาน Subscription')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Check if subscription has expired
+    if account.subscription_expiry and account.subscription_expiry < timezone.now():
+        messages.error(request, 'Subscription ของคุณหมดอายุแล้ว')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Activate bot
+    account.active_bot = bot
+    account.bot_activated_at = timezone.now()
+    account.save(update_fields=['active_bot', 'bot_activated_at'])
+    
+    messages.success(request, f'เปิดใช้งาน Bot "{bot.name}" สำเร็จ')
+    return redirect('account_detail', account_id=account_id)
+
+
+@login_required
+def account_bot_deactivate_view(request, account_id):
+    """Deactivate bot for a specific account"""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Get account and verify ownership
+    account = get_object_or_404(
+        UserTradeAccount,
+        id=account_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Deactivate bot
+    if account.active_bot:
+        bot_name = account.active_bot.name
+        account.active_bot = None
+        account.bot_activated_at = None
+        account.save(update_fields=['active_bot', 'bot_activated_at'])
+        messages.success(request, f'ปิดใช้งาน Bot "{bot_name}" สำเร็จ')
+    else:
+        messages.info(request, 'ไม่มี Bot ที่เปิดใช้งานอยู่')
+    
+    return redirect('account_detail', account_id=account_id)

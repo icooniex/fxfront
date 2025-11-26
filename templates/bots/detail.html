@@ -1,0 +1,279 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ bot.name }} - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-4">
+    <!-- Back Button -->
+    <div class="mb-3">
+        <a href="{% url 'bots_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> กลับ
+        </a>
+    </div>
+
+    <!-- Bot Header -->
+    <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h1 class="h3 mb-2">🤖 {{ bot.name }}</h1>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge bg-primary">v{{ bot.version }}</span>
+                    <span class="badge {% if bot.status == 'ACTIVE' %}bg-success{% elif bot.status == 'BETA' %}bg-warning{% else %}bg-secondary{% endif %}">
+                        {{ bot.get_status_display }}
+                    </span>
+                    {% if bot.strategy_type %}
+                    <span class="badge bg-info">{{ bot.strategy_type }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if bot.description %}
+        <p class="text-secondary mb-0">{{ bot.description }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Bot Information Tabs -->
+    <ul class="nav nav-pills glass-card mb-4" id="botTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="info-tab" data-bs-toggle="pill" data-bs-target="#info" type="button" role="tab">
+                <i class="bi bi-info-circle"></i> ข้อมูล
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="parameters-tab" data-bs-toggle="pill" data-bs-target="#parameters" type="button" role="tab">
+                <i class="bi bi-sliders"></i> Parameters
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="backtest-tab" data-bs-toggle="pill" data-bs-target="#backtest" type="button" role="tab">
+                <i class="bi bi-graph-up"></i> Backtest
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="botTabsContent">
+        <!-- Info Tab -->
+        <div class="tab-pane fade show active" id="info" role="tabpanel">
+            <div class="row g-3">
+                <!-- Allowed Symbols -->
+                <div class="col-12 col-md-6">
+                    <div class="glass-card">
+                        <h6 class="mb-3"><i class="bi bi-currency-exchange"></i> สัญลักษณ์ที่รองรับ</h6>
+                        {% if bot.allowed_symbols %}
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for symbol in bot.allowed_symbols %}
+                            <span class="badge bg-primary">{{ symbol }}</span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">ไม่มีข้อมูล</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Allowed Packages -->
+                <div class="col-12 col-md-6">
+                    <div class="glass-card">
+                        <h6 class="mb-3"><i class="bi bi-box"></i> แพ็คเกจที่รองรับ</h6>
+                        {% if allowed_packages %}
+                        <div class="d-flex flex-column gap-2">
+                            {% for package in allowed_packages %}
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                <span>{{ package.name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">ไม่มีข้อมูล</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Backtest Configuration -->
+                <div class="col-12">
+                    <div class="glass-card">
+                        <h6 class="mb-3"><i class="bi bi-gear"></i> การตั้งค่า Backtest</h6>
+                        <div class="row g-3">
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">ช่วงเวลา Backtest</div>
+                                <div class="fw-bold">{{ bot.backtest_range_days }} วัน</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Backtest ล่าสุด</div>
+                                <div class="fw-bold">
+                                    {% if bot.last_backtest_date %}
+                                    {{ bot.last_backtest_date|date:"d M Y" }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Optimize ล่าสุด</div>
+                                <div class="fw-bold">
+                                    {% if bot.last_optimization_date %}
+                                    {{ bot.last_optimization_date|date:"d M Y" }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parameters Tab -->
+        <div class="tab-pane fade" id="parameters" role="tabpanel">
+            <div class="glass-card">
+                <h6 class="mb-3"><i class="bi bi-sliders"></i> Current Parameters</h6>
+                {% if bot.current_parameters %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key, value in bot.current_parameters.items %}
+                            <tr>
+                                <td><code>{{ key }}</code></td>
+                                <td class="text-primary">{{ value }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">ยังไม่มี Parameters</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Backtest Tab -->
+        <div class="tab-pane fade" id="backtest" role="tabpanel">
+            {% if latest_backtest %}
+            <div class="row g-3">
+                <!-- Backtest Summary -->
+                <div class="col-12">
+                    <div class="glass-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0"><i class="bi bi-graph-up"></i> ผล Backtest ล่าสุด</h6>
+                            <span class="badge bg-primary">
+                                {{ latest_backtest.backtest_start_date|date:"d M Y" }} - {{ latest_backtest.backtest_end_date|date:"d M Y" }}
+                            </span>
+                        </div>
+
+                        <!-- Metrics Grid -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Total Trades</div>
+                                <div class="h5 mb-0">{{ latest_backtest.total_trades }}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Wins</div>
+                                <div class="h5 mb-0 text-success">{{ latest_backtest.winning_trades }}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Losses</div>
+                                <div class="h5 mb-0 text-danger">{{ latest_backtest.losing_trades }}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Win Rate</div>
+                                <div class="h5 mb-0 {% if latest_backtest.win_rate >= 50 %}text-success{% else %}text-warning{% endif %}">
+                                    {{ latest_backtest.win_rate|floatformat:2 }}%
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Total Profit</div>
+                                <div class="h5 mb-0 {% if latest_backtest.total_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ latest_backtest.total_profit|floatformat:2 }}
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Avg Profit/Trade</div>
+                                <div class="h5 mb-0">{{ latest_backtest.avg_profit_per_trade|floatformat:2 }}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Best Trade</div>
+                                <div class="h5 mb-0 text-success">{{ latest_backtest.best_trade|floatformat:2 }}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-secondary small">Worst Trade</div>
+                                <div class="h5 mb-0 text-danger">{{ latest_backtest.worst_trade|floatformat:2 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="text-secondary small">Max Drawdown</div>
+                                <div class="h5 mb-0 text-danger">{{ latest_backtest.max_drawdown|floatformat:2 }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-secondary small">Max Drawdown %</div>
+                                <div class="h5 mb-0 text-danger">{{ latest_backtest.max_drawdown_percent|floatformat:2 }}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equity Curve -->
+                {% if latest_backtest.equity_curve_image %}
+                <div class="col-12">
+                    <div class="glass-card">
+                        <h6 class="mb-3"><i class="bi bi-graph-up-arrow"></i> Equity Curve</h6>
+                        <img src="{{ latest_backtest.equity_curve_image.url }}" alt="Equity Curve" class="img-fluid rounded">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="glass-card text-center py-5">
+                <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
+                <h5 class="text-secondary">ยังไม่มีผล Backtest</h5>
+                <p class="text-muted">กรุณารอการอัพเดทผล Backtest</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- User Action Section (if logged in) -->
+    {% if user.is_authenticated and user_accounts %}
+    <div class="glass-card mt-4">
+        <h6 class="mb-3"><i class="bi bi-link-45deg"></i> ใช้งาน Bot นี้</h6>
+        <p class="text-secondary small mb-3">เลือกบัญชีที่ต้องการใช้งาน Bot นี้</p>
+        
+        {% for account in user_accounts %}
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background: rgba(255,255,255,0.03);">
+            <div>
+                <div class="fw-bold">{{ account.account_name }}</div>
+                <div class="small text-secondary">{{ account.mt5_account_id }}</div>
+            </div>
+            {% if account.active_bot.id == bot.id %}
+            <span class="badge bg-success">กำลังใช้งาน</span>
+            {% else %}
+            <form method="post" action="{% url 'account_bot_activate' account.id %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="bot_id" value="{{ bot.id }}">
+                <button type="submit" class="btn btn-sm btn-primary">เลือกใช้</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}

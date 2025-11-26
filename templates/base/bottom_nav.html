@@ -11,6 +11,11 @@
             <span>บัญชี</span>
         </a>
         
+        <a href="{% url 'bots_list' %}" class="nav-item {% if 'bots' in request.path %}active{% endif %}">
+            <i class="bi bi-robot"></i>
+            <span>Bots</span>
+        </a>
+        
         <a href="{% url 'trades_history' %}" class="nav-item {% if 'trades' in request.path %}active{% endif %}">
             <i class="bi bi-clock-history"></i>
             <span>ประวัติ</span>

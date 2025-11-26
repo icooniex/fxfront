@@ -33,6 +33,12 @@ urlpatterns = [
     # Trades
     path('trades/history/', views.trades_history_view, name='trades_history'),
     
+    # Bots
+    path('bots/', views.bots_list_view, name='bots_list'),
+    path('bots/<int:bot_id>/', views.bot_detail_view, name='bot_detail'),
+    path('account/<int:account_id>/bot/activate/', views.account_bot_activate_view, name='account_bot_activate'),
+    path('account/<int:account_id>/bot/deactivate/', views.account_bot_deactivate_view, name='account_bot_deactivate'),
+    
     # Bot API
     path('api/bot/', include('trading.api.urls')),
 ]
