@@ -53,6 +53,12 @@ class BotStatus(models.TextChoices):
     DOWN = 'DOWN', 'Server Down'
 
 
+class BotStrategyStatus(models.TextChoices):
+    ACTIVE = 'ACTIVE', 'Active'
+    INACTIVE = 'INACTIVE', 'Inactive'
+    BETA = 'BETA', 'Beta'
+
+
 # User Profile Model
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -127,6 +133,21 @@ class UserTradeAccount(TimeStampedModel):
         default=dict,
         blank=True,
         help_text="Trading configuration: lot_size, timeframes (M5, M15), notification_settings"
+    )
+    
+    # Bot strategy assignment
+    active_bot = models.ForeignKey(
+        'BotStrategy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='active_accounts',
+        help_text="Currently assigned bot strategy"
+    )
+    bot_activated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the bot was activated for this account"
     )
     
     # Sync tracking
@@ -319,4 +340,180 @@ class BotAPIKey(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} ({'Active' if self.is_active else 'Inactive'})"
+
+
+# Bot Strategy Model
+class BotStrategy(TimeStampedModel):
+    name = models.CharField(max_length=200, help_text="Bot strategy name")
+    description = models.TextField(blank=True, help_text="Detailed description of the bot strategy")
+    status = models.CharField(
+        max_length=20,
+        choices=BotStrategyStatus.choices,
+        default=BotStrategyStatus.INACTIVE,
+        db_index=True,
+        help_text="Bot availability status"
+    )
+    version = models.CharField(max_length=50, default="1.0.0", help_text="Bot version")
+    strategy_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Strategy type (e.g., Trend Following, Mean Reversion, Scalping)"
+    )
+    
+    # Allowed configurations
+    allowed_symbols = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of trading symbols this bot supports (e.g., ['XAUUSD', 'EURUSD'])"
+    )
+    allowed_packages = models.ManyToManyField(
+        SubscriptionPackage,
+        related_name='bot_strategies',
+        blank=True,
+        help_text="Subscription packages that can use this bot"
+    )
+    
+    # Optimization and backtest configuration
+    optimization_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Optimization settings: lookback_days, threshold_points, tp_sl_ranges, parameter_ranges"
+    )
+    current_parameters = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Current optimized parameters for the bot strategy"
+    )
+    backtest_range_days = models.PositiveIntegerField(
+        default=90,
+        help_text="Number of days to backtest"
+    )
+    
+    # Tracking
+    last_backtest_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time backtest was run"
+    )
+    last_optimization_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time optimization was run"
+    )
+
+    class Meta:
+        verbose_name = 'Bot Strategy'
+        verbose_name_plural = 'Bot Strategies'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} v{self.version} ({self.get_status_display()})"
+    
+    def get_latest_backtest(self):
+        """Get the most recent backtest result"""
+        return self.backtest_results.filter(is_latest=True).first()
+
+
+# Backtest Result Model
+class BacktestResult(TimeStampedModel):
+    bot_strategy = models.ForeignKey(
+        BotStrategy,
+        on_delete=models.CASCADE,
+        related_name='backtest_results',
+        help_text="Bot strategy this backtest is for"
+    )
+    
+    # Backtest timing
+    run_date = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+        help_text="When this backtest was run"
+    )
+    backtest_start_date = models.DateField(help_text="Start date of backtest period")
+    backtest_end_date = models.DateField(help_text="End date of backtest period")
+    
+    # Trade statistics
+    total_trades = models.PositiveIntegerField(default=0, help_text="Total number of trades")
+    winning_trades = models.PositiveIntegerField(default=0, help_text="Number of winning trades")
+    losing_trades = models.PositiveIntegerField(default=0, help_text="Number of losing trades")
+    win_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Win rate percentage"
+    )
+    
+    # Profit metrics
+    total_profit = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Total profit/loss"
+    )
+    avg_profit_per_trade = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Average profit per trade"
+    )
+    best_trade = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Best single trade profit"
+    )
+    worst_trade = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Worst single trade loss"
+    )
+    
+    # Risk metrics
+    max_drawdown = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Maximum drawdown amount"
+    )
+    max_drawdown_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Maximum drawdown percentage"
+    )
+    
+    # Visual results
+    equity_curve_image = models.ImageField(
+        upload_to='backtest_curves/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text="Equity curve chart image"
+    )
+    
+    # Additional data
+    raw_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional backtest data (trade list, daily returns, etc.)"
+    )
+    
+    # Flag for latest result
+    is_latest = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether this is the most recent backtest result for the strategy"
+    )
+
+    class Meta:
+        verbose_name = 'Backtest Result'
+        verbose_name_plural = 'Backtest Results'
+        ordering = ['-run_date']
+        indexes = [
+            models.Index(fields=['bot_strategy', '-run_date']),
+            models.Index(fields=['is_latest', '-run_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.bot_strategy.name} - {self.run_date.strftime('%Y-%m-%d')} ({'Latest' if self.is_latest else 'Historical'})"
 

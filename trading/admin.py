@@ -6,7 +6,9 @@ from .models import (
     UserTradeAccount,
     TradeTransaction,
     SubscriptionPayment,
-    BotAPIKey
+    BotAPIKey,
+    BotStrategy,
+    BacktestResult
 )
 import secrets
 
@@ -42,13 +44,14 @@ class UserTradeAccountAdmin(admin.ModelAdmin):
         'broker_name',
         'subscription_status',
         'bot_status',
+        'active_bot',
         'balance_display',
         'subscription_expiry'
     ]
     list_filter = ['subscription_status', 'bot_status', 'broker_name', 'is_active', 'created_at']
     search_fields = ['account_name', 'user__username', 'mt5_account_id', 'broker_name']
     readonly_fields = ['created_at', 'updated_at', 'last_sync_datetime']
-    raw_id_fields = ['user', 'subscription_package']
+    raw_id_fields = ['user', 'subscription_package', 'active_bot']
     date_hierarchy = 'subscription_expiry'
     ordering = ['-created_at']
 
@@ -60,7 +63,7 @@ class UserTradeAccountAdmin(admin.ModelAdmin):
             'fields': ('subscription_package', 'subscription_start', 'subscription_expiry', 'subscription_status')
         }),
         ('Bot Configuration', {
-            'fields': ('bot_status', 'trade_config')
+            'fields': ('bot_status', 'active_bot', 'bot_activated_at', 'trade_config')
         }),
         ('System Information', {
             'fields': ('is_active', 'last_sync_datetime', 'created_at', 'updated_at'),
@@ -226,4 +229,130 @@ class BotAPIKeyAdmin(admin.ModelAdmin):
             return self.readonly_fields
         else:  # Creating new object
             return ['created_at', 'updated_at', 'last_used']
+
+
+@admin.register(BotStrategy)
+class BotStrategyAdmin(admin.ModelAdmin):
+    list_display = [
+        'name',
+        'version',
+        'status',
+        'strategy_type',
+        'backtest_range_days',
+        'last_backtest_date',
+        'is_active',
+        'created_at'
+    ]
+    list_filter = ['status', 'strategy_type', 'is_active', 'created_at', 'last_backtest_date']
+    search_fields = ['name', 'description', 'strategy_type', 'version']
+    readonly_fields = ['created_at', 'updated_at', 'last_backtest_date', 'last_optimization_date']
+    filter_horizontal = ['allowed_packages']
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description', 'status', 'version', 'strategy_type')
+        }),
+        ('Configuration', {
+            'fields': ('allowed_symbols', 'allowed_packages', 'backtest_range_days')
+        }),
+        ('Optimization & Parameters', {
+            'fields': ('optimization_config', 'current_parameters'),
+            'classes': ('collapse',)
+        }),
+        ('Tracking', {
+            'fields': ('last_backtest_date', 'last_optimization_date')
+        }),
+        ('System Information', {
+            'fields': ('is_active', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(BacktestResult)
+class BacktestResultAdmin(admin.ModelAdmin):
+    list_display = [
+        'bot_strategy',
+        'run_date',
+        'date_range',
+        'total_trades',
+        'win_rate_display',
+        'total_profit_display',
+        'max_drawdown_display',
+        'is_latest',
+        'is_active'
+    ]
+    list_filter = ['is_latest', 'is_active', 'run_date', 'bot_strategy__status']
+    search_fields = ['bot_strategy__name']
+    readonly_fields = ['created_at', 'updated_at', 'equity_curve_preview']
+    raw_id_fields = ['bot_strategy']
+    date_hierarchy = 'run_date'
+    ordering = ['-run_date']
+
+    fieldsets = (
+        ('Backtest Information', {
+            'fields': ('bot_strategy', 'run_date', 'backtest_start_date', 'backtest_end_date', 'is_latest')
+        }),
+        ('Trade Statistics', {
+            'fields': ('total_trades', 'winning_trades', 'losing_trades', 'win_rate')
+        }),
+        ('Profit Metrics', {
+            'fields': ('total_profit', 'avg_profit_per_trade', 'best_trade', 'worst_trade')
+        }),
+        ('Risk Metrics', {
+            'fields': ('max_drawdown', 'max_drawdown_percent')
+        }),
+        ('Visual Results', {
+            'fields': ('equity_curve_image', 'equity_curve_preview')
+        }),
+        ('Additional Data', {
+            'fields': ('raw_data',),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': ('is_active', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def date_range(self, obj):
+        return f"{obj.backtest_start_date} to {obj.backtest_end_date}"
+    date_range.short_description = 'Test Period'
+
+    def win_rate_display(self, obj):
+        color = 'green' if obj.win_rate >= 50 else 'orange' if obj.win_rate >= 40 else 'red'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{:.2f}%</span>',
+            color,
+            obj.win_rate
+        )
+    win_rate_display.short_description = 'Win Rate'
+
+    def total_profit_display(self, obj):
+        color = 'green' if obj.total_profit >= 0 else 'red'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{:,.2f}</span>',
+            color,
+            obj.total_profit
+        )
+    total_profit_display.short_description = 'Total Profit'
+
+    def max_drawdown_display(self, obj):
+        return format_html(
+            '<span style="color: red;">{:,.2f} ({:.2f}%)</span>',
+            obj.max_drawdown,
+            obj.max_drawdown_percent
+        )
+    max_drawdown_display.short_description = 'Max Drawdown'
+
+    def equity_curve_preview(self, obj):
+        if obj.equity_curve_image:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" style="max-width: 400px; max-height: 300px;"/></a>',
+                obj.equity_curve_image.url,
+                obj.equity_curve_image.url
+            )
+        return "No equity curve image"
+    equity_curve_preview.short_description = 'Equity Curve Preview'
 

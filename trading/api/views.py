@@ -6,9 +6,15 @@ from django.utils.dateparse import parse_datetime
 from django.db import transaction
 from django.db.models import Sum, Count, Q
 from decimal import Decimal, InvalidOperation
-from trading.models import TradeTransaction, UserTradeAccount
+from trading.models import (
+    TradeTransaction, 
+    UserTradeAccount, 
+    BotStrategy, 
+    BacktestResult
+)
 from .authentication import require_bot_api_key
 import json
+from datetime import datetime, date
 
 
 @require_http_methods(["POST"])
@@ -930,9 +936,275 @@ def get_account_closed_positions(request, account_id):
                 'total': total_count,
                 'limit': limit,
                 'offset': offset,
-                'has_more': (offset + limit) < total_count,
             }
         },
         'timestamp': timezone.now().isoformat()
     })
+
+
+# ============================================
+# Bot Strategy API Endpoints (for external backtest system)
+# ============================================
+
+@require_http_methods(["GET"])
+@require_bot_api_key
+def get_bot_strategies(request):
+    """
+    Get list of all bot strategies with their configuration.
+    External backtest system uses this to know which bots to backtest.
+    """
+    strategies = BotStrategy.objects.filter(is_active=True).prefetch_related('allowed_packages')
+    
+    strategies_data = []
+    for bot in strategies:
+        strategies_data.append({
+            'id': bot.id,
+            'name': bot.name,
+            'description': bot.description,
+            'status': bot.status,
+            'version': bot.version,
+            'strategy_type': bot.strategy_type,
+            'allowed_symbols': bot.allowed_symbols,
+            'allowed_packages': [pkg.id for pkg in bot.allowed_packages.all()],
+            'optimization_config': bot.optimization_config,
+            'current_parameters': bot.current_parameters,
+            'backtest_range_days': bot.backtest_range_days,
+            'last_backtest_date': bot.last_backtest_date.isoformat() if bot.last_backtest_date else None,
+            'last_optimization_date': bot.last_optimization_date.isoformat() if bot.last_optimization_date else None,
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'strategies': strategies_data,
+            'count': len(strategies_data)
+        },
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def submit_backtest_result(request):
+    """
+    Submit backtest result from external backtest system.
+    Accepts JSON data with metrics and optional equity curve image as multipart/form-data.
+    
+    Expected data:
+    - bot_strategy_id (required)
+    - backtest_start_date (required, YYYY-MM-DD)
+    - backtest_end_date (required, YYYY-MM-DD)
+    - total_trades, winning_trades, losing_trades
+    - win_rate, total_profit, avg_profit_per_trade
+    - best_trade, worst_trade
+    - max_drawdown, max_drawdown_percent
+    - raw_data (optional, JSON object)
+    - equity_curve_image (optional, file upload)
+    - set_as_latest (optional, boolean, default True)
+    """
+    try:
+        # Check if this is multipart form data or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.POST.dict()
+            equity_curve_image = request.FILES.get('equity_curve_image')
+        else:
+            data = json.loads(request.body)
+            equity_curve_image = None
+    except (json.JSONDecodeError, Exception) as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Invalid request data: {str(e)}'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['bot_strategy_id', 'backtest_start_date', 'backtest_end_date']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Missing required fields',
+            'errors': errors
+        }, status=400)
+    
+    # Get bot strategy
+    try:
+        bot_strategy = BotStrategy.objects.get(id=data['bot_strategy_id'], is_active=True)
+    except BotStrategy.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Bot strategy {data['bot_strategy_id']} not found"
+        }, status=404)
+    except ValueError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid bot_strategy_id format'
+        }, status=400)
+    
+    # Parse dates
+    try:
+        backtest_start_date = datetime.strptime(data['backtest_start_date'], '%Y-%m-%d').date()
+        backtest_end_date = datetime.strptime(data['backtest_end_date'], '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid date format. Use YYYY-MM-DD'
+        }, status=400)
+    
+    # Parse numeric fields with defaults
+    try:
+        total_trades = int(data.get('total_trades', 0))
+        winning_trades = int(data.get('winning_trades', 0))
+        losing_trades = int(data.get('losing_trades', 0))
+        
+        win_rate = Decimal(str(data.get('win_rate', '0.00')))
+        total_profit = Decimal(str(data.get('total_profit', '0.0000')))
+        avg_profit_per_trade = Decimal(str(data.get('avg_profit_per_trade', '0.0000')))
+        best_trade = Decimal(str(data.get('best_trade', '0.0000')))
+        worst_trade = Decimal(str(data.get('worst_trade', '0.0000')))
+        max_drawdown = Decimal(str(data.get('max_drawdown', '0.0000')))
+        max_drawdown_percent = Decimal(str(data.get('max_drawdown_percent', '0.00')))
+    except (ValueError, InvalidOperation) as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Invalid numeric format: {str(e)}'
+        }, status=400)
+    
+    # Parse raw_data if provided
+    raw_data = {}
+    if 'raw_data' in data:
+        if isinstance(data['raw_data'], str):
+            try:
+                raw_data = json.loads(data['raw_data'])
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid raw_data JSON format'
+                }, status=400)
+        elif isinstance(data['raw_data'], dict):
+            raw_data = data['raw_data']
+    
+    # Determine if this should be set as latest
+    set_as_latest = data.get('set_as_latest', 'true').lower() in ['true', '1', 'yes']
+    
+    # Create backtest result within transaction
+    with transaction.atomic():
+        # If setting as latest, unset all other latest results for this bot
+        if set_as_latest:
+            BacktestResult.objects.filter(
+                bot_strategy=bot_strategy,
+                is_latest=True
+            ).update(is_latest=False)
+        
+        # Create new backtest result
+        backtest_result = BacktestResult.objects.create(
+            bot_strategy=bot_strategy,
+            run_date=timezone.now(),
+            backtest_start_date=backtest_start_date,
+            backtest_end_date=backtest_end_date,
+            total_trades=total_trades,
+            winning_trades=winning_trades,
+            losing_trades=losing_trades,
+            win_rate=win_rate,
+            total_profit=total_profit,
+            avg_profit_per_trade=avg_profit_per_trade,
+            best_trade=best_trade,
+            worst_trade=worst_trade,
+            max_drawdown=max_drawdown,
+            max_drawdown_percent=max_drawdown_percent,
+            raw_data=raw_data,
+            is_latest=set_as_latest,
+            equity_curve_image=equity_curve_image
+        )
+        
+        # Update bot strategy's last_backtest_date
+        bot_strategy.last_backtest_date = timezone.now()
+        bot_strategy.save(update_fields=['last_backtest_date'])
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Backtest result submitted successfully',
+        'data': {
+            'backtest_result_id': backtest_result.id,
+            'bot_strategy_id': bot_strategy.id,
+            'bot_strategy_name': bot_strategy.name,
+            'is_latest': backtest_result.is_latest,
+            'run_date': backtest_result.run_date.isoformat()
+        }
+    }, status=201)
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def submit_optimization_result(request):
+    """
+    Submit optimization result from external optimization system.
+    Updates the current_parameters for a bot strategy.
+    
+    Expected JSON data:
+    - bot_strategy_id (required)
+    - optimized_parameters (required, JSON object)
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    if 'bot_strategy_id' not in data:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'bot_strategy_id is required'
+        }, status=400)
+    
+    if 'optimized_parameters' not in data:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'optimized_parameters is required'
+        }, status=400)
+    
+    # Get bot strategy
+    try:
+        bot_strategy = BotStrategy.objects.get(id=data['bot_strategy_id'], is_active=True)
+    except BotStrategy.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Bot strategy {data['bot_strategy_id']} not found"
+        }, status=404)
+    except ValueError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid bot_strategy_id format'
+        }, status=400)
+    
+    # Validate optimized_parameters is a dict
+    optimized_parameters = data['optimized_parameters']
+    if not isinstance(optimized_parameters, dict):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'optimized_parameters must be a JSON object'
+        }, status=400)
+    
+    # Update bot strategy's current_parameters and last_optimization_date
+    bot_strategy.current_parameters = optimized_parameters
+    bot_strategy.last_optimization_date = timezone.now()
+    bot_strategy.save(update_fields=['current_parameters', 'last_optimization_date'])
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Optimization result submitted successfully',
+        'data': {
+            'bot_strategy_id': bot_strategy.id,
+            'bot_strategy_name': bot_strategy.name,
+            'current_parameters': bot_strategy.current_parameters,
+            'last_optimization_date': bot_strategy.last_optimization_date.isoformat()
+        }
+    }, status=200)
 
