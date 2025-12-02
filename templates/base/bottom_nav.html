@@ -6,11 +6,6 @@
             <span>หน้าหลัก</span>
         </a>
         
-        <a href="{% url 'accounts_list' %}" class="nav-item {% if 'accounts' in request.path %}active{% endif %}">
-            <i class="bi bi-wallet2"></i>
-            <span>บัญชี</span>
-        </a>
-        
         <a href="{% url 'bots_list' %}" class="nav-item {% if 'bots' in request.path %}active{% endif %}">
             <i class="bi bi-robot"></i>
             <span>Bots</span>
