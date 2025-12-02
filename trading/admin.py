@@ -322,27 +322,31 @@ class BacktestResultAdmin(admin.ModelAdmin):
 
     def win_rate_display(self, obj):
         color = 'green' if obj.win_rate >= 50 else 'orange' if obj.win_rate >= 40 else 'red'
+        win_rate_formatted = f'{obj.win_rate:.2f}'
         return format_html(
-            '<span style="color: {}; font-weight: bold;">{:.2f}%</span>',
+            '<span style="color: {}; font-weight: bold;">{}%</span>',
             color,
-            obj.win_rate
+            win_rate_formatted
         )
     win_rate_display.short_description = 'Win Rate'
 
     def total_profit_display(self, obj):
         color = 'green' if obj.total_profit >= 0 else 'red'
+        profit_formatted = f'{float(obj.total_profit):,.2f}'
         return format_html(
-            '<span style="color: {}; font-weight: bold;">{:,.2f}</span>',
+            '<span style="color: {}; font-weight: bold;">{}</span>',
             color,
-            obj.total_profit
+            profit_formatted
         )
     total_profit_display.short_description = 'Total Profit'
 
     def max_drawdown_display(self, obj):
+        drawdown_formatted = f'{float(obj.max_drawdown):,.2f}'
+        drawdown_pct_formatted = f'{float(obj.max_drawdown_percent):.2f}'
         return format_html(
-            '<span style="color: red;">{:,.2f} ({:.2f}%)</span>',
-            obj.max_drawdown,
-            obj.max_drawdown_percent
+            '<span style="color: red;">{} ({}%)</span>',
+            drawdown_formatted,
+            drawdown_pct_formatted
         )
     max_drawdown_display.short_description = 'Max Drawdown'
 

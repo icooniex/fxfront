@@ -573,7 +573,7 @@ def bots_list_view(request):
     # Get all active bot strategies with prefetch
     bots = BotStrategy.objects.filter(
         is_active=True,
-        status='ACTIVE'
+        # status='ACTIVE'
     ).prefetch_related('allowed_packages').order_by('-created_at')
     
     # Add latest backtest result to each bot
