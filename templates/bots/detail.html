@@ -72,39 +72,6 @@
             {% endif %}
         </div>
 
-        <!-- Backtest Configuration -->
-        <div class="section-header">
-            <h3 class="section-title">การตั้งค่า Backtest</h3>
-        </div>
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <div class="account-stats">
-                <div class="stat-item">
-                    <span class="stat-label">ช่วงเวลา Backtest</span>
-                    <span class="stat-value">{{ bot.backtest_range_days }} วัน</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Backtest ล่าสุด</span>
-                    <span class="stat-value">
-                        {% if bot.last_backtest_date %}
-                        {{ bot.last_backtest_date|date:"d M Y" }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Optimize ล่าสุด</span>
-                    <span class="stat-value">
-                        {% if bot.last_optimization_date %}
-                        {{ bot.last_optimization_date|date:"d M Y" }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
-
         <!-- Current Parameters -->
         {% if bot.current_parameters %}
         <div class="section-header">
@@ -138,68 +105,65 @@
             <h3 class="section-title">ผล Backtest ล่าสุด</h3>
         </div>
         
+        <!-- Main Metrics -->
+        <div class="glass-card fade-in mb-3" style="padding: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                <div style="text-align: center;">
+                    <div class="stat-label" style="margin-bottom: 8px;">Total Profit</div>
+                    <div class="stat-value {% if latest_backtest.total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 1.75rem;">
+                        {{ latest_backtest.total_profit|floatformat:2 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-label" style="margin-bottom: 8px;">Win Rate</div>
+                    <div class="stat-value {% if latest_backtest.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 1.75rem;">
+                        {{ latest_backtest.win_rate|floatformat:2 }}%
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-label" style="margin-bottom: 8px;">Max DD %</div>
+                    <div class="stat-value text-loss" style="font-size: 1.75rem;">{{ latest_backtest.max_drawdown_percent|floatformat:2 }}%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Stats -->
         <div class="glass-card fade-in mb-3" style="padding: 20px;">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <span class="stat-label">ช่วงเวลาทดสอบ</span>
-                <span class="badge-glass">
+                <span class="badge-glass" style="font-size: 0.85rem;">
                     {{ latest_backtest.backtest_start_date|date:"d M Y" }} - {{ latest_backtest.backtest_end_date|date:"d M Y" }}
                 </span>
             </div>
 
-            <!-- Metrics Grid -->
-            <div class="account-stats mb-3">
-                <div class="stat-item">
-                    <span class="stat-label">Total Trades</span>
-                    <span class="stat-value">{{ latest_backtest.total_trades }}</span>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Total Trades</span>
+                    <span class="stat-value" style="font-size: 0.95rem;">{{ latest_backtest.total_trades }}</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Wins</span>
-                    <span class="stat-value text-profit">{{ latest_backtest.winning_trades }}</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Wins</span>
+                    <span class="stat-value text-profit" style="font-size: 0.95rem;">{{ latest_backtest.winning_trades }}</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Losses</span>
-                    <span class="stat-value text-loss">{{ latest_backtest.losing_trades }}</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Losses</span>
+                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.losing_trades }}</span>
                 </div>
-            </div>
-
-            <div class="account-stats mb-3">
-                <div class="stat-item">
-                    <span class="stat-label">Win Rate</span>
-                    <span class="stat-value {% if latest_backtest.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
-                        {{ latest_backtest.win_rate|floatformat:2 }}%
-                    </span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Avg/Trade</span>
+                    <span class="stat-value" style="font-size: 0.95rem;">{{ latest_backtest.avg_profit_per_trade|floatformat:2 }}</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Profit</span>
-                    <span class="stat-value {% if latest_backtest.total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                        {{ latest_backtest.total_profit|floatformat:2 }}
-                    </span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Best Trade</span>
+                    <span class="stat-value text-profit" style="font-size: 0.95rem;">{{ latest_backtest.best_trade|floatformat:2 }}</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Avg/Trade</span>
-                    <span class="stat-value">{{ latest_backtest.avg_profit_per_trade|floatformat:2 }}</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Worst Trade</span>
+                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.worst_trade|floatformat:2 }}</span>
                 </div>
-            </div>
-
-            <div class="account-stats mb-3">
-                <div class="stat-item">
-                    <span class="stat-label">Best Trade</span>
-                    <span class="stat-value text-profit">{{ latest_backtest.best_trade|floatformat:2 }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Worst Trade</span>
-                    <span class="stat-value text-loss">{{ latest_backtest.worst_trade|floatformat:2 }}</span>
-                </div>
-            </div>
-
-            <div class="account-stats">
-                <div class="stat-item">
-                    <span class="stat-label">Max Drawdown</span>
-                    <span class="stat-value text-loss">{{ latest_backtest.max_drawdown|floatformat:2 }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Max DD %</span>
-                    <span class="stat-value text-loss">{{ latest_backtest.max_drawdown_percent|floatformat:2 }}%</span>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-label" style="font-size: 0.9rem;">Max Drawdown</span>
+                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.max_drawdown|floatformat:2 }}</span>
                 </div>
             </div>
         </div>
