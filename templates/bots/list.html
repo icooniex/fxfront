@@ -4,104 +4,101 @@
 {% block title %}Bot Strategies - FX Bot Monitor{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-3 px-md-4 py-4">
-    <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <h1 class="h3 mb-1">🤖 Bot Strategies</h1>
-            <p class="text-secondary mb-0">เลือก Bot Trading ที่เหมาะสมกับคุณ</p>
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-2">🤖 Bot Strategies</h1>
+            <p class="text-secondary">เลือก Bot Trading ที่เหมาะสมกับคุณ</p>
         </div>
-    </div>
 
-    {% if bots %}
-    <!-- Bot Cards Grid -->
-    <div class="row g-3">
-        {% for bot in bots %}
-        <div class="col-12 col-md-6 col-lg-4">
-            <div class="glass-card h-100 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h5 class="mb-1">{{ bot.name }}</h5>
-                        <span class="badge bg-primary">v{{ bot.version }}</span>
-                        {% if bot.strategy_type %}
-                        <span class="badge bg-secondary ms-1">{{ bot.strategy_type }}</span>
-                        {% endif %}
-                    </div>
-                    <span class="badge {% if bot.status == 'ACTIVE' %}bg-success{% elif bot.status == 'BETA' %}bg-warning{% else %}bg-secondary{% endif %}">
-                        {{ bot.get_status_display }}
-                    </span>
-                </div>
-
-                <p class="text-secondary small mb-3 flex-grow-1">
-                    {{ bot.description|truncatewords:20 }}
-                </p>
-
-                <!-- Allowed Symbols -->
-                {% if bot.allowed_symbols %}
-                <div class="mb-3">
-                    <div class="text-muted small mb-1">สัญลักษณ์ที่รองรับ:</div>
-                    <div class="d-flex flex-wrap gap-1">
-                        {% for symbol in bot.allowed_symbols %}
-                        <span class="badge bg-dark">{{ symbol }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Latest Backtest Result -->
-                {% if bot.latest_backtest %}
-                <div class="border-top border-secondary pt-3 mb-3">
-                    <div class="text-muted small mb-2">ผล Backtest ล่าสุด</div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="text-secondary small">Win Rate</div>
-                            <div class="fw-bold {% if bot.latest_backtest.win_rate >= 50 %}text-success{% else %}text-warning{% endif %}">
-                                {{ bot.latest_backtest.win_rate }}%
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-secondary small">Total Trades</div>
-                            <div class="fw-bold">{{ bot.latest_backtest.total_trades }}</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-secondary small">Total Profit</div>
-                            <div class="fw-bold {% if bot.latest_backtest.total_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                {{ bot.latest_backtest.total_profit|floatformat:2 }}
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-secondary small">Max DD</div>
-                            <div class="fw-bold text-danger">
-                                {{ bot.latest_backtest.max_drawdown_percent|floatformat:2 }}%
+        {% if bots %}
+        <!-- Bot Cards Grid -->
+        <div class="row g-3">
+            {% for bot in bots %}
+            <div class="col-12">
+                <div class="glass-card fade-in" onclick="window.location.href='{% url 'bot_detail' bot.id %}'" style="cursor: pointer; padding: 20px;">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="mb-2" style="font-size: 1.25rem;">{{ bot.name }}</h3>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <span class="badge-glass {% if bot.status == 'ACTIVE' %}badge-active{% elif bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}">
+                                    {{ bot.get_status_display }}
+                                </span>
+                                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9;">v{{ bot.version }}</span>
+                                {% if bot.strategy_type %}
+                                <span class="badge-glass" style="background: rgba(255, 255, 255, 0.05);">{{ bot.strategy_type }}</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
-                    <div class="text-muted small mt-2">
-                        <i class="bi bi-clock"></i> {{ bot.latest_backtest.run_date|date:"d M Y" }}
-                    </div>
-                </div>
-                {% else %}
-                <div class="border-top border-secondary pt-3 mb-3">
-                    <div class="text-muted small">ยังไม่มีผล Backtest</div>
-                </div>
-                {% endif %}
 
-                <!-- View Details Button -->
-                <a href="{% url 'bot_detail' bot.id %}" class="btn btn-primary w-100 mt-auto">
-                    <i class="bi bi-info-circle"></i> ดูรายละเอียด
-                </a>
+                    <p class="text-secondary mb-3" style="font-size: 0.9rem;">
+                        {{ bot.description|truncatewords:20 }}
+                    </p>
+
+                    <!-- Allowed Symbols -->
+                    {% if bot.allowed_symbols %}
+                    <div class="mb-3">
+                        <div class="stat-label mb-2">สัญลักษณ์ที่รองรับ:</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for symbol in bot.allowed_symbols %}
+                            <span class="badge-glass" style="background: rgba(255, 255, 255, 0.03); font-size: 0.85rem;">{{ symbol }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Latest Backtest Result -->
+                    {% if bot.latest_backtest %}
+                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px; margin-top: 16px;">
+                        <div class="stat-label mb-3">ผล Backtest ล่าสุด</div>
+                        <div class="account-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Win Rate</span>
+                                <span class="stat-value {% if bot.latest_backtest.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
+                                    {{ bot.latest_backtest.win_rate }}%
+                                </span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Trades</span>
+                                <span class="stat-value">{{ bot.latest_backtest.total_trades }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Profit</span>
+                                <span class="stat-value {% if bot.latest_backtest.total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                                    {{ bot.latest_backtest.total_profit|floatformat:2 }}
+                                </span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Max DD</span>
+                                <span class="stat-value text-loss">
+                                    {{ bot.latest_backtest.max_drawdown_percent|floatformat:2 }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-secondary mt-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-clock"></i> {{ bot.latest_backtest.run_date|date:"d M Y" }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px; margin-top: 16px;">
+                        <div class="text-secondary" style="font-size: 0.9rem;">ยังไม่มีผล Backtest</div>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% else %}
+        <!-- No Bots Available -->
+        <div class="empty-state glass-card-static">
+            <i class="bi bi-robot"></i>
+            <div class="empty-state-title">ยังไม่มี Bot ที่พร้อมใช้งาน</div>
+            <div class="empty-state-text">กรุณาติดตามข่าวสารเพิ่มเติม</div>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <!-- No Bots Available -->
-    <div class="glass-card text-center py-5">
-        <i class="bi bi-robot display-1 text-muted mb-3"></i>
-        <h5 class="text-secondary">ยังไม่มี Bot ที่พร้อมใช้งาน</h5>
-        <p class="text-muted">กรุณาติดตามข่าวสารเพิ่มเติม</p>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
 
