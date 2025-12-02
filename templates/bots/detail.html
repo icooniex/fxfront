@@ -29,6 +29,9 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="glass-card fade-in mb-3" style="padding: 20px;">
             
             {% if bot.description %}
             <p class="text-secondary mb-4">{{ bot.description }}</p>
@@ -36,7 +39,7 @@
 
             <!-- Allowed Symbols -->
             <div class="mb-4">
-                <div class="stat-label mb-2">สัญลักษณ์ที่รองรับ</div>
+                <div class="stat-label mb-2">คู่เทรดที่รองรับ</div>
                 {% if bot.allowed_symbols %}
                 <div class="d-flex flex-wrap gap-2">
                     {% for symbol in bot.allowed_symbols %}
@@ -66,33 +69,7 @@
             </div>
         </div>
 
-        <!-- Current Parameters -->
-        {% if bot.current_parameters %}
-        <div class="section-header">
-            <h3 class="section-title">Current Parameters</h3>
-        </div>
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th style="border: none; padding: 12px;">Parameter</th>
-                            <th style="border: none; padding: 12px;">Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for key, value in bot.current_parameters.items %}
-                        <tr>
-                            <td style="padding: 12px;"><code style="color: rgba(255, 255, 255, 0.7);">{{ key }}</code></td>
-                            <td style="padding: 12px; color: #158bf9;">{{ value }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
+        
         <!-- Backtest Results -->
         {% if latest_backtest %}
         <div class="section-header">
