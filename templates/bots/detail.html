@@ -31,45 +31,39 @@
             </div>
             
             {% if bot.description %}
-            <p class="text-secondary mb-0">{{ bot.description }}</p>
+            <p class="text-secondary mb-4">{{ bot.description }}</p>
             {% endif %}
-        </div>
 
-        <!-- Bot Information Sections -->
-        
-        <!-- Allowed Symbols -->
-        <div class="section-header">
-            <h3 class="section-title">สัญลักษณ์ที่รองรับ</h3>
-        </div>
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            {% if bot.allowed_symbols %}
-            <div class="d-flex flex-wrap gap-2">
-                {% for symbol in bot.allowed_symbols %}
-                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.9rem; padding: 8px 16px;">{{ symbol }}</span>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-secondary mb-0">ไม่มีข้อมูล</p>
-            {% endif %}
-        </div>
-
-        <!-- Allowed Packages -->
-        <div class="section-header">
-            <h3 class="section-title">แพ็คเกจที่รองรับ</h3>
-        </div>
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            {% if allowed_packages %}
-            <div class="d-flex flex-column gap-3">
-                {% for package in allowed_packages %}
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-check-circle text-profit me-3" style="font-size: 1.2rem;"></i>
-                    <span style="font-size: 1rem;">{{ package.name }}</span>
+            <!-- Allowed Symbols -->
+            <div class="mb-4">
+                <div class="stat-label mb-2">สัญลักษณ์ที่รองรับ</div>
+                {% if bot.allowed_symbols %}
+                <div class="d-flex flex-wrap gap-2">
+                    {% for symbol in bot.allowed_symbols %}
+                    <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.85rem; padding: 6px 12px;">{{ symbol }}</span>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% else %}
+                <p class="text-secondary mb-0" style="font-size: 0.9rem;">ไม่มีข้อมูล</p>
+                {% endif %}
             </div>
-            {% else %}
-            <p class="text-secondary mb-0">ไม่มีข้อมูล</p>
-            {% endif %}
+
+            <!-- Allowed Packages -->
+            <div>
+                <div class="stat-label mb-2">แพ็คเกจที่รองรับ</div>
+                {% if allowed_packages %}
+                <div class="d-flex flex-column gap-2">
+                    {% for package in allowed_packages %}
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle text-profit me-2" style="font-size: 1rem;"></i>
+                        <span style="font-size: 0.9rem;">{{ package.name }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-secondary mb-0" style="font-size: 0.9rem;">ไม่มีข้อมูล</p>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Current Parameters -->
