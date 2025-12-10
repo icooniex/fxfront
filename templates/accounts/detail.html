@@ -126,29 +126,26 @@
                             </span>
                         </div>
                         <div style="text-align: right;">
-                            <div class="position-pnl-value {% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 18px; font-weight: 600;">
-                                {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
-                            </div>
+                            <span style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">{{ position.opened_at|date:"d M y H:i" }}</span>
                         </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6); margin-bottom: 8px;">
                         <div>
-                            <span style="opacity: 0.6;">Sell {{ position.lot_size }} lot at {{ position.entry_price }}</span>
-                        </div>
-                        <div style="text-align: right;">
-                            <span>{{ position.opened_at|date:"d M y H:i" }}</span>
+                            <span style="opacity: 0.6;">{{ position.get_position_type_display }} {{ position.lot_size }} lot at {{ position.entry_price }}</span>
                         </div>
                     </div>
                     
-                    <!-- <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
                         <div>
-                            <span style="color: rgba(255, 255, 255, 0.6);">TP</span>
-                            <span style="margin-left: 4px;color: rgba(255, 255, 255, 0.6);">{{ position.take_profit|default:"—" }}</span>
-                            <span style="color: rgba(255, 255, 255, 0.6); margin-left: 12px;">SL</span>
-                            <span style="margin-left: 4px;color: rgba(255, 255, 255, 0.6);">{{ position.stop_loss|default:"—" }}</span>
+                            <span style="color: rgba(255, 255, 255, 0.5);">TP</span>
+                            <span style="margin-left: 4px; color: #10b981; font-weight: 500;">{{ position.take_profit|default:"—" }}</span>
                         </div>
-                    </div> -->
+                        <div>
+                            <span style="color: rgba(255, 255, 255, 0.5);">SL</span>
+                            <span style="margin-left: 4px; color: #ef4444; font-weight: 500;">{{ position.stop_loss|default:"—" }}</span>
+                        </div>
+                    </div>
                 </div>
                 {% endfor %}
             {% else %}
