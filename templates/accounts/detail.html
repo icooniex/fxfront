@@ -302,26 +302,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Optimized Live Update Script -->
-<script src="{% static 'js/account-live-update.js' %}"></script>
 <script>
-    // Initialize optimized live update system
-    let liveUpdate;
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        liveUpdate = new AccountLiveUpdate({{ account.id }});
-        liveUpdate.init();
-    });
-    
-    // Battery saving: Stop updates when page is hidden
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            liveUpdate.stopAutoUpdate();
-        } else {
-            liveUpdate.startAutoUpdate();
-        }
-    });
-    
     // Bot Control Functions
     const FXBot = {
         pauseBot(accountId) {
