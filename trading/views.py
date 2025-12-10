@@ -525,11 +525,14 @@ def payment_submit_view(request):
         
         package = get_object_or_404(SubscriptionPackage, id=package_id)
         
+        # Generate unique temporary MT5 account ID
+        temp_mt5_id = f"PENDING_{request.user.id}_{secrets.token_hex(8)}"
+        
         # Create placeholder trade account first
         trade_account = UserTradeAccount.objects.create(
             user=request.user,
             account_name=account_name,
-            mt5_account_id='PENDING',
+            mt5_account_id=temp_mt5_id,
             broker_name='Pending Setup',
             mt5_server='Pending',
             subscription_package=package,
