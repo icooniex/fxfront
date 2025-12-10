@@ -99,12 +99,13 @@
         </div> -->
 
         <!-- Upload Slip Form -->
-        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
-            <h5 class="mb-3">อัพโหลดสลิปโอนเงิน</h5>
+        <form method="post" action="{% url 'payment_submit' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="package_id" value="{{ package.id }}">
             
-            <form method="post" action="{% url 'payment_submit' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" name="package_id" value="{{ package.id }}">
+            <!-- Payment Slip Section -->
+            <div class="glass-card mt-4 fade-in" style="animation-delay: 0.4s; padding: 24px;">
+                <h5 class="mb-3">อัพโหลดสลิปโอนเงิน</h5>
                 
                 <div class="mb-3">
                     <label for="slip" class="form-label">เลือกรูปสลิป</label>
@@ -122,7 +123,7 @@
                 <!-- Preview Area -->
                 <div id="slip-preview" class="mb-3"></div>
 
-                <div class="mb-3">
+                <div class="mb-0">
                     <label for="account_name" class="form-label">ชื่อบัญชีเทรด</label>
                     <input type="text" 
                            class="form-control form-control-glass" 
@@ -132,19 +133,61 @@
                            required>
                     <small class="text-muted">เช่น: Bot Account 1, My Trading</small>
                 </div>
+            </div>
 
-                <div class="divider"></div>
+            <!-- MT5 Account Info Section -->
+            <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
+                <h5 class="mb-2">ข้อมูลบัญชี MT5</h5>
+                <p class="text-muted mb-3" style="font-size: 13px;">
+                    <i class="bi bi-info-circle me-1"></i>ใช้สำหรับ Setup Bot ให้กับบัญชีของคุณ
+                </p>
 
+                <div class="mb-3">
+                    <label for="mt5_account_id" class="form-label">MT5 Account ID</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_account_id" 
+                           name="mt5_account_id" 
+                           placeholder="กรอกหมายเลขบัญชี MT5"
+                           required>
+                    <small class="text-muted">หมายเลขบัญชี MT5 ของคุณ (ตัวเลข)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_password" class="form-label">MT5 Password</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_password" 
+                           name="mt5_password" 
+                           placeholder="กรอกรหัสผ่าน MT5"
+                           required>
+                    <small class="text-muted">รหัสผ่านบัญชี MT5 สำหรับ Setup Bot</small>
+                </div>
+
+                <div class="mb-0">
+                    <label for="mt5_server" class="form-label">MT5 Server</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_server" 
+                           name="mt5_server" 
+                           placeholder="กรอกชื่อเซิร์ฟเวอร์ MT5"
+                           required>
+                    <small class="text-muted">เช่น: Exness-MT5Trial7, XMGlobal-Real 5</small>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="glass-card mt-4 fade-in" style="animation-delay: 0.6s; padding: 24px;">
                 <div class="d-grid">
                     <button type="submit" class="btn btn-primary-blue btn-lg">
                         <i class="bi bi-check-circle me-2"></i>ส่งหลักฐานการโอนเงิน
                     </button>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
 
         <!-- Help Info -->
-        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.6s;">
+        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.7s;">
             <p class="text-muted" style="font-size: 13px;">
                 <i class="bi bi-headset me-1"></i>
                 ต้องการความช่วยเหลือ? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>

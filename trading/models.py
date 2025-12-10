@@ -104,6 +104,7 @@ class UserTradeAccount(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_accounts')
     account_name = models.CharField(max_length=200)
     mt5_account_id = models.CharField(max_length=100, help_text="MT5 Account Number")
+    mt5_password = models.CharField(max_length=200, blank=True, help_text="MT5 Account Password (encrypted)")
     broker_name = models.CharField(max_length=100)
     mt5_server = models.CharField(max_length=100)
     

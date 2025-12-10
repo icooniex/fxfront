@@ -521,20 +521,26 @@ def payment_submit_view(request):
     if request.method == 'POST':
         package_id = request.POST.get('package_id')
         account_name = request.POST.get('account_name')
+        mt5_account_id = request.POST.get('mt5_account_id')
+        mt5_password = request.POST.get('mt5_password')
+        mt5_server = request.POST.get('mt5_server')
         payment_slip = request.FILES.get('payment_slip')
         
         package = get_object_or_404(SubscriptionPackage, id=package_id)
         
-        # Generate unique temporary MT5 account ID
-        temp_mt5_id = f"PENDING_{request.user.id}_{secrets.token_hex(8)}"
+        # Validate required fields
+        if not all([account_name, mt5_account_id, mt5_password, mt5_server, payment_slip]):
+            messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+            return redirect('payment')
         
-        # Create placeholder trade account first
+        # Create trade account with MT5 credentials
         trade_account = UserTradeAccount.objects.create(
             user=request.user,
             account_name=account_name,
-            mt5_account_id=temp_mt5_id,
+            mt5_account_id=mt5_account_id,
+            mt5_password=mt5_password,  # TODO: Should encrypt this in production
             broker_name='Pending Setup',
-            mt5_server='Pending',
+            mt5_server=mt5_server,
             subscription_package=package,
             subscription_start=timezone.now(),
             subscription_expiry=timezone.now() + timedelta(days=package.duration_days),

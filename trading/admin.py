@@ -57,7 +57,7 @@ class UserTradeAccountAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Account Information', {
-            'fields': ('user', 'account_name', 'mt5_account_id', 'broker_name', 'mt5_server', 'current_balance')
+            'fields': ('user', 'account_name', 'mt5_account_id', 'mt5_password', 'broker_name', 'mt5_server', 'current_balance')
         }),
         ('Subscription Details', {
             'fields': ('subscription_package', 'subscription_start', 'subscription_expiry', 'subscription_status')
