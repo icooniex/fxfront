@@ -283,7 +283,7 @@ def line_disconnect_view(request):
 @login_required
 def dashboard_view(request):
     """Main dashboard showing all trading accounts"""
-    accounts = UserTradeAccount.objects.filter(user=request.user, is_active=True)
+    accounts = UserTradeAccount.objects.filter(user=request.user, is_active=True).select_related('active_bot')
     
     # Enrich accounts with additional data
     for account in accounts:

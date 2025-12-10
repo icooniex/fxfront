@@ -26,6 +26,11 @@
                         <div>
                             <h3 class="account-name">{{ account.account_name }}</h3>
                             <p class="broker-name">{{ account.broker_name }}</p>
+                            {% if account.active_bot %}
+                            <p class="text-muted" style="font-size: 12px; margin-top: 4px; margin-bottom: 0;">
+                                <i class="bi bi-robot me-1"></i>{{ account.active_bot.name }}{% if account.active_bot.version %} v{{ account.active_bot.version }}{% endif %}{% if account.trade_config.enabled_symbols %} • {{ account.trade_config.enabled_symbols|join:", " }}{% endif %}
+                            </p>
+                            {% endif %}
                         </div>
                         {% if account.subscription_status == 'PENDING' %}
                         <span class="badge-glass badge-warning">
