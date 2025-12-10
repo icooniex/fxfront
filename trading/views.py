@@ -350,18 +350,16 @@ def account_detail_view(request, account_id):
     winning_trades = all_closed.filter(profit_loss__gt=0).count()
     account.win_rate = (winning_trades / account.total_trades * 100) if account.total_trades > 0 else 0
     
-    # Get available bots if no bot is active
+    # Get available bots for selection/change
     available_bots = []
-    if not account.active_bot:
-        # Get active bots that are compatible with the account's subscription
-        if account.subscription_package:
-            available_bots = BotStrategy.objects.filter(
-                status='ACTIVE',
-                allowed_packages=account.subscription_package
-            )
-        else:
-            # No subscription, show all active bots
-            available_bots = BotStrategy.objects.filter(status='ACTIVE')
+    if account.subscription_package:
+        available_bots = BotStrategy.objects.filter(
+            status='ACTIVE',
+            allowed_packages=account.subscription_package
+        )
+    else:
+        # No subscription, show all active bots
+        available_bots = BotStrategy.objects.filter(status='ACTIVE')
     
     # Equity curve data (last 30 days)
     equity_data = []

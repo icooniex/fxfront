@@ -97,9 +97,12 @@
                     <button type="button" class="btn btn-glass flex-grow-1" data-bs-toggle="modal" data-bs-target="#botConfigModal" style="font-size: 0.9rem; padding: 8px 16px;">
                         <i class="bi bi-gear"></i> Config Bot
                     </button>
-                    <a href="{% url 'bots_list' %}" class="btn btn-glass" style="padding: 8px 14px; font-size: 0.9rem;">
+                    <button type="button" class="btn btn-glass" data-bs-toggle="modal" data-bs-target="#changeBotModal" style="padding: 8px 14px; font-size: 0.9rem;">
                         <i class="bi bi-arrow-left-right"></i>
-                    </a>
+                    </button>
+                    <button type="button" class="btn btn-glass text-danger" data-bs-toggle="modal" data-bs-target="#removeBotModal" style="padding: 8px 14px; font-size: 0.9rem;">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
                 </div>
                 {% else %}
                 <!-- No Bot Active - Show Dropdown Selection -->
@@ -252,6 +255,71 @@
             <i class="bi bi-play-circle me-2"></i>Resume Bot
         </button>
         {% endif %}
+    </div>
+</div>
+
+<!-- Change Bot Modal -->
+<div class="modal fade" id="changeBotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">เปลี่ยน Bot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'account_bot_activate' account.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="setting-label mb-2">เลือก Bot ใหม่</label>
+                        <div class="setting-description mb-3">Bot ปัจจุบันจะถูกปิดการใช้งานและเปลี่ยนเป็น Bot ที่เลือกใหม่</div>
+                        <select name="bot_id" class="form-control-glass" required>
+                            <option value="">-- เลือก Bot --</option>
+                            {% for bot in available_bots %}
+                            <option value="{{ bot.id }}" {% if account.active_bot and bot.id == account.active_bot.id %}selected{% endif %}>
+                                {{ bot.name }} (v{{ bot.version }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <a href="{% url 'bots_list' %}" class="text-primary-blue d-block text-center" style="font-size: 0.85rem; text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> ดูรายละเอียด Bot ทั้งหมด
+                    </a>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary-blue">ยืนยันการเปลี่ยน Bot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Bot Modal -->
+<div class="modal fade" id="removeBotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ปิดการใช้งาน Bot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'account_bot_deactivate' account.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0">คุณแน่ใจหรือไม่ว่าต้องการปิดการใช้งาน Bot</p>
+                    {% if account.active_bot %}
+                    <p class="text-center text-primary-blue mb-0" style="font-weight: 600; font-size: 1.1rem;">{{ account.active_bot.name }}</p>
+                    {% endif %}
+                    <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot จะหยุดการเทรดอัตโนมัติทันที</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger">ยืนยันปิดการใช้งาน</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
