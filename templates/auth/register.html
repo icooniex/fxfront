@@ -155,15 +155,7 @@
         
         if (password !== confirmPassword) {
             e.preventDefault();
-            showToast('รหัสผ่านไม่ตรงกัน', 'error');
-            return false;
-        }
-        
-        // Check LINE connection
-        const lineUuid = document.getElementById('lineUuid').value;
-        if (!lineUuid) {
-            e.preventDefault();
-            showToast('กรุณาเชื่อมต่อ LINE ก่อน', 'error');
+            alert('รหัสผ่านไม่ตรงกัน');
             return false;
         }
     });
