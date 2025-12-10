@@ -20,7 +20,7 @@
         </div>
 
         <!-- Package Summary -->
-        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
+        <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s; padding: 24px;">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <span class="text-secondary">แพ็คเกจที่เลือก</span>
                 <span class="badge-glass badge-primary-blue">{{ package.name }}</span>
@@ -39,7 +39,7 @@
         </div>
 
         <!-- QR Code for PromptPay -->
-        <div class="glass-card fade-in text-center" style="animation-delay: 0.2s;">
+        <div class="glass-card fade-in text-center" style="animation-delay: 0.2s; padding: 24px;">
             <h5 class="mb-3">สแกน QR Code</h5>
             <p class="text-secondary mb-3" style="font-size: 14px;">
                 สแกนด้วยแอปฯ Mobile Banking ของคุณ
@@ -59,15 +59,15 @@
         </div>
 
         <!-- OR Divider -->
-        <div class="text-center my-4 fade-in" style="animation-delay: 0.3s;">
+        <!-- <div class="text-center my-4 fade-in" style="animation-delay: 0.3s;">
             <span class="text-secondary" style="background: var(--bg-dark-start); padding: 0 16px; position: relative; z-index: 1;">
                 หรือ
             </span>
             <div style="position: relative; top: -12px; height: 1px; background: var(--border-subtle); z-index: 0;"></div>
-        </div>
+        </div> -->
 
         <!-- Bank Transfer Info -->
-        <div class="glass-card fade-in" style="animation-delay: 0.4s;">
+        <!-- <div class="glass-card fade-in" style="animation-delay: 0.4s; padding: 24px;">
             <h5 class="mb-3">โอนเงินผ่านธนาคาร</h5>
             
             <div class="mb-2">
@@ -96,10 +96,10 @@
                     โปรดโอนตามจำนวนที่ระบุเท่านั้น เพื่อความสะดวกในการตรวจสอบ
                 </small>
             </div>
-        </div>
+        </div> -->
 
         <!-- Upload Slip Form -->
-        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s;">
+        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
             <h5 class="mb-3">อัพโหลดสลิปโอนเงิน</h5>
             
             <form method="post" action="{% url 'payment_submit' %}" enctype="multipart/form-data">
