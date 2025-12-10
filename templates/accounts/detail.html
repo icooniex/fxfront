@@ -120,8 +120,8 @@
                 <form method="post" action="{% url 'account_bot_activate' account.id %}" id="botSelectForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label class="stat-label mb-2" style="font-size: 0.85rem;">เลือก Bot</label>
-                        <select name="bot_id" class="form-control-glass" required>
+                        <h5 class="mb-3" style="font-size: 1.1rem; font-weight: 600;">🤖 เลือก Bot</h5>
+                        <select name="bot_id" class="form-control-glass w-100" required style="width: 100%;">
                             <option value="">-- เลือก Bot --</option>
                             {% for bot in available_bots %}
                             <option value="{{ bot.id }}">{{ bot.name }} (v{{ bot.version }})</option>
@@ -241,15 +241,14 @@
 </div>
 
 <!-- Bot Control Panel (Fixed Bottom) -->
+{% if account.active_bot %}
 <div class="bot-control-panel">
     <div class="bot-control-container">
         <div class="bot-status-row">
             <div>
-                {% if account.active_bot %}
                 <div class="mb-1" style="font-size: 0.85rem; font-weight: 500;">
                     🤖 {{ account.active_bot.name }}
                 </div>
-                {% endif %}
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}" style="font-size: 0.75rem; padding: 3px 10px;">
                         {{ account.get_bot_status_display }}
@@ -258,17 +257,15 @@
                 </div>
             </div>
             <div class="bot-controls">
-                {% if account.active_bot %}
                 <button class="btn btn-glass control-btn" data-bs-toggle="modal" data-bs-target="#botConfigModal">
                     <i class="bi bi-gear"></i>
                     <span>Config Bot</span>
                 </button>
-                {% endif %}
             </div>
         </div>
         {% if account.bot_status == 'ACTIVE' %}
         <button class="btn btn-danger-glass w-100 mt-2" data-bs-toggle="modal" data-bs-target="#pauseBotModal">
-            <i class="bi bi-pause-circle me-2"></i>Pause Bot & Clear Orders
+            <i class="bi bi-pause-circle me-2"></i>Pause Bot
         </button>
         {% else %}
         <button class="btn btn-primary-blue w-100 mt-2" data-bs-toggle="modal" data-bs-target="#resumeBotModal">
@@ -277,6 +274,7 @@
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 <!-- Change Bot Modal -->
 <div class="modal fade" id="changeBotModal" tabindex="-1">
