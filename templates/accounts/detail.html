@@ -6,6 +6,18 @@
 {% block content %}
 <div class="page-wrapper" style="padding-bottom: 180px;">
     <div class="container-mobile">
+        <!-- Messages -->
+        {% if messages %}
+        <div class="mb-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="background: rgba({% if message.tags == 'success' %}16, 185, 129{% elif message.tags == 'error' %}239, 68, 68{% else %}21, 139, 249{% endif %}, 0.1); border: 1px solid rgba({% if message.tags == 'success' %}16, 185, 129{% elif message.tags == 'error' %}239, 68, 68{% else %}21, 139, 249{% endif %}, 0.3); color: {% if message.tags == 'success' %}#10b981{% elif message.tags == 'error' %}#ef4444{% else %}#158bf9{% endif %}; border-radius: 12px; padding: 12px 16px;">
+                {{ message }}
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.8rem;"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- Back Button -->
         <div class="mb-3">
             <a href="{% url 'dashboard' %}" class="btn btn-glass btn-sm">
@@ -13,7 +25,7 @@
             </a>
         </div>
 
-        <!-- Mini Dashboard -->
+        <!-- Mini Dashboard with Bot Configuration -->
         <div class="mini-dashboard glass-card fade-in">
             <div class="dashboard-header">
                 <div class="account-info">
@@ -52,61 +64,67 @@
                 </div>
             </div>
 
-            <!-- Equity Curve Chart -->
-            <!-- <div class="chart-container">
-                <canvas id="equityChart"></canvas>
-            </div> -->
-        </div>
-
-        <!-- Bot Configuration Section -->
-        <div class="section-header">
-            <h3 class="section-title">🤖 Bot Configuration</h3>
-        </div>
-
-        <div class="glass-card fade-in mb-3">
-            {% if account.active_bot %}
-            <!-- Active Bot Display -->
-            <div class="d-flex align-items-start justify-content-between mb-3">
-                <div class="flex-grow-1">
+            <!-- Bot Configuration Section (Inside Same Card) -->
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 20px; padding-top: 20px;">
+                <div class="section-title mb-3" style="font-size: 1rem;">🤖 Bot Configuration</div>
+                
+                {% if account.active_bot %}
+                <!-- Active Bot Display -->
+                <div class="mb-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <h5 class="mb-0">{{ account.active_bot.name }}</h5>
-                        <span class="badge bg-success">กำลังใช้งาน</span>
-                        <span class="badge bg-primary">v{{ account.active_bot.version }}</span>
+                        <h5 class="mb-0" style="font-size: 1rem;">{{ account.active_bot.name }}</h5>
+                        <span class="badge-glass" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 0.7rem;">v{{ account.active_bot.version }}</span>
                     </div>
-                    <p class="text-secondary small mb-2">{{ account.active_bot.description|truncatewords:15 }}</p>
-                    {% if account.bot_activated_at %}
-                    <div class="text-muted small">
-                        <i class="bi bi-clock"></i> เปิดใช้งานเมื่อ: {{ account.bot_activated_at|date:"d M Y H:i" }}
+                    
+                    <!-- Trading Symbols -->
+                    <div class="mb-3">
+                        <div class="stat-label mb-2" style="font-size: 0.8rem; opacity: 0.7;">Trading Symbols:</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if account.trade_config.enabled_symbols %}
+                                {% for symbol in account.trade_config.enabled_symbols %}
+                                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.75rem; padding: 4px 10px;">{{ symbol }}</span>
+                                {% endfor %}
+                            {% else %}
+                                {% for symbol in account.active_bot.allowed_symbols %}
+                                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.75rem; padding: 4px 10px;">{{ symbol }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endif %}
                 </div>
-            </div>
 
-            <div class="d-flex gap-2">
-                <a href="{% url 'bot_detail' account.active_bot.id %}" class="btn btn-sm btn-outline-primary flex-grow-1">
-                    <i class="bi bi-info-circle"></i> ดูรายละเอียด Bot
-                </a>
-                <form method="post" action="{% url 'account_bot_deactivate' account.id %}" class="flex-grow-1">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('คุณต้องการปิดใช้งาน Bot นี้หรือไม่?')">
-                        <i class="bi bi-x-circle"></i> ปิดใช้งาน
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-glass flex-grow-1" data-bs-toggle="modal" data-bs-target="#botConfigModal" style="font-size: 0.9rem; padding: 8px 16px;">
+                        <i class="bi bi-gear"></i> Config Bot
                     </button>
+                    <a href="{% url 'bots_list' %}" class="btn btn-glass" style="padding: 8px 14px; font-size: 0.9rem;">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </a>
+                </div>
+                {% else %}
+                <!-- No Bot Active - Show Dropdown Selection -->
+                <form method="post" action="{% url 'account_bot_activate' account.id %}" id="botSelectForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="stat-label mb-2" style="font-size: 0.85rem;">เลือก Bot</label>
+                        <select name="bot_id" class="form-control-glass" required>
+                            <option value="">-- เลือก Bot --</option>
+                            {% for bot in available_bots %}
+                            <option value="{{ bot.id }}">{{ bot.name }} (v{{ bot.version }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="submit" class="btn btn-primary-blue flex-grow-1" style="font-size: 0.9rem; padding: 8px 16px;">
+                            <i class="bi bi-check-circle"></i> ยืนยันการเลือก Bot
+                        </button>
+                    </div>
+                    <a href="{% url 'bots_list' %}" class="text-primary-blue d-block text-center mt-2" style="font-size: 0.85rem; text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> ดูรายละเอียด Bot ทั้งหมด
+                    </a>
                 </form>
+                {% endif %}
             </div>
-            {% else %}
-            <!-- No Bot Active - Show Selection -->
-            <div class="text-center py-2 mb-3">
-                <i class="bi bi-robot display-4 text-muted mb-2"></i>
-                <h6 class="text-secondary">ยังไม่ได้เลือก Bot</h6>
-                <p class="text-muted small mb-0">เลือก Bot เพื่อเริ่มการเทรดอัตโนมัติ</p>
-            </div>
-
-            <div class="d-flex gap-2">
-                <a href="{% url 'bots_list' %}" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i> เลือก Bot
-                </a>
-            </div>
-            {% endif %}
         </div>
 
         <!-- Open Positions Section -->
@@ -234,6 +252,58 @@
             <i class="bi bi-play-circle me-2"></i>Resume Bot
         </button>
         {% endif %}
+    </div>
+</div>
+
+<!-- Bot Config Modal -->
+<div class="modal fade" id="botConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bot Configuration</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'account_update_bot_config' account.id %}" id="botConfigForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    {% if account.active_bot %}
+                    <!-- Symbol Selection -->
+                    <div class="mb-4">
+                        <label class="setting-label mb-2">Trading Symbols</label>
+                        <div class="setting-description mb-3">เลือก Symbol ที่ต้องการเทรด (อย่างน้อย 1 รายการ)</div>
+                        {% for symbol in account.active_bot.allowed_symbols %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="enabled_symbols" value="{{ symbol }}" id="symbol_{{ symbol }}" 
+                                {% if account.trade_config.enabled_symbols %}
+                                    {% if symbol in account.trade_config.enabled_symbols %}checked{% endif %}
+                                {% else %}
+                                    checked
+                                {% endif %}>
+                            <label class="form-check-label" for="symbol_{{ symbol }}">
+                                {{ symbol }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Lot Size -->
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Lot Size</div>
+                            <div class="setting-description">จำนวน Lot ในการเทรด</div>
+                        </div>
+                        <input type="number" name="lot_size" class="form-control-glass" style="width: 120px;" value="{{ account.trade_config.lot_size|default:'0.01' }}" step="0.01" min="0.01" required>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-blue">Save Configuration</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

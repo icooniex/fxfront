@@ -350,6 +350,19 @@ def account_detail_view(request, account_id):
     winning_trades = all_closed.filter(profit_loss__gt=0).count()
     account.win_rate = (winning_trades / account.total_trades * 100) if account.total_trades > 0 else 0
     
+    # Get available bots if no bot is active
+    available_bots = []
+    if not account.active_bot:
+        # Get active bots that are compatible with the account's subscription
+        if account.subscription_package:
+            available_bots = BotStrategy.objects.filter(
+                status='ACTIVE',
+                allowed_packages=account.subscription_package
+            )
+        else:
+            # No subscription, show all active bots
+            available_bots = BotStrategy.objects.filter(status='ACTIVE')
+    
     # Equity curve data (last 30 days)
     equity_data = []
     for i in range(30, 0, -1):
@@ -361,9 +374,55 @@ def account_detail_view(request, account_id):
         'account': account,
         'open_positions': open_positions,
         'closed_positions': closed_positions,
-        'equity_data': equity_data
+        'equity_data': equity_data,
+        'available_bots': available_bots
     }
     return render(request, 'accounts/detail.html', context)
+
+
+@login_required
+def account_update_bot_config(request, account_id):
+    """Update bot configuration for an account"""
+    if request.method != 'POST':
+        return redirect('account_detail', account_id=account_id)
+    
+    account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user, is_active=True)
+    
+    if not account.active_bot:
+        messages.error(request, 'ไม่มี Bot ที่กำลังใช้งาน')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Get enabled symbols
+    enabled_symbols = request.POST.getlist('enabled_symbols')
+    if not enabled_symbols:
+        messages.error(request, 'กรุณาเลือกอย่างน้อย 1 Symbol')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Validate symbols against bot's allowed symbols
+    for symbol in enabled_symbols:
+        if symbol not in account.active_bot.allowed_symbols:
+            messages.error(request, f'Symbol {symbol} ไม่ได้รับอนุญาตจาก Bot นี้')
+            return redirect('account_detail', account_id=account_id)
+    
+    # Get lot size
+    try:
+        lot_size = float(request.POST.get('lot_size', 0.01))
+        if lot_size <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        messages.error(request, 'Lot Size ไม่ถูกต้อง')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Update trade_config
+    trade_config = account.trade_config or {}
+    trade_config['enabled_symbols'] = enabled_symbols
+    trade_config['lot_size'] = lot_size
+    
+    account.trade_config = trade_config
+    account.save()
+    
+    messages.success(request, 'อัพเดทการตั้งค่า Bot เรียบร้อยแล้ว')
+    return redirect('account_detail', account_id=account_id)
 
 
 @login_required
@@ -636,13 +695,22 @@ def account_bot_activate_view(request, account_id):
         messages.error(request, 'กรุณาเลือก Bot')
         return redirect('account_detail', account_id=account_id)
     
-    # Get bot strategy
-    bot = get_object_or_404(BotStrategy, id=bot_id, is_active=True, status='ACTIVE')
-    
-    # Validate subscription package
-    if not bot.allowed_packages.filter(id=account.subscription_package.id).exists():
-        messages.error(request, f'แพ็คเกจของคุณไม่รองรับ Bot นี้')
+    try:
+        # Get bot strategy
+        bot = BotStrategy.objects.get(id=bot_id, is_active=True, status='ACTIVE')
+    except BotStrategy.DoesNotExist:
+        messages.error(request, 'ไม่พบ Bot ที่เลือก')
         return redirect('account_detail', account_id=account_id)
+    
+    # Validate subscription package (only if bot has package restrictions)
+    if bot.allowed_packages.exists():
+        if not account.subscription_package:
+            messages.error(request, 'บัญชีนี้ยังไม่มี Subscription Package')
+            return redirect('account_detail', account_id=account_id)
+        
+        if not bot.allowed_packages.filter(id=account.subscription_package.id).exists():
+            messages.error(request, f'แพ็คเกจของคุณไม่รองรับ Bot นี้')
+            return redirect('account_detail', account_id=account_id)
     
     # Validate subscription is active
     if account.subscription_status != 'ACTIVE':
