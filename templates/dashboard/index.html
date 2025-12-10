@@ -63,7 +63,7 @@
                     <div class="empty-state-title">ยังไม่มีบัญชีเทรด</div>
                     <div class="empty-state-text">เริ่มต้นด้วยการเพิ่มบัญชีเทรดของคุณ</div>
                     <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue mt-3">
-                        <i class="bi bi-plus-circle me-2"></i>เพิ่มบัญชีเทรด
+                        + เพิ่มบัญชีเทรด
                     </a>
                 </div>
             {% endif %}
@@ -73,7 +73,7 @@
         {% if accounts %}
         <div class="mt-4 text-center fade-in">
             <a href="{% url 'subscription_packages' %}" class="btn btn-glass">
-                <i class="bi bi-plus-circle me-2"></i>เพิ่มบัญชีเทรด
+                + เพิ่มบัญชีเทรด
             </a>
         </div>
         {% endif %}
