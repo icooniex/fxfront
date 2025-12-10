@@ -1,0 +1,104 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Upload Slip Again - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper d-flex align-items-center justify-content-center" style="min-height: 100vh; padding-bottom: 0;">
+    <div class="container-mobile">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'profile' %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>กลับ
+            </a>
+        </div>
+
+        <!-- Title -->
+        <div class="mb-4 fade-in">
+            <h1 class="mb-3">อัพโหลดสลิปใหม่</h1>
+            <p class="text-secondary">
+                สลิปเดิมไม่ถูกต้อง กรุณาอัพโหลดสลิปใหม่
+            </p>
+        </div>
+
+        <!-- Payment Info Card -->
+        <div class="glass-card text-start mb-4 fade-in" style="animation-delay: 0.1s; padding: 24px;">
+            <div class="mb-3">
+                <span class="badge-glass badge-down">
+                    การชำระเงินไม่สำเร็จ
+                </span>
+            </div>
+
+            {% if payment.admin_notes %}
+            <div class="alert" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                <small class="text-loss">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    <strong>เหตุผล:</strong> {{ payment.admin_notes }}
+                </small>
+            </div>
+            {% endif %}
+
+            <div class="divider"></div>
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">แพ็คเกจ</p>
+                    <p class="mb-0" style="font-weight: 600;">{{ package.name }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size: 12px;">ยอดชำระ</p>
+                    <p class="mb-0" style="font-weight: 600; color: var(--primary-blue);">฿{{ payment.payment_amount|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Re-upload Form -->
+        <div class="glass-card fade-in" style="animation-delay: 0.2s; padding: 24px;">
+            <h5 class="mb-3">อัพโหลดสลิปใหม่</h5>
+            
+            <form method="post" action="{% url 'payment_reupload' payment.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="slip" class="form-label">เลือกรูปสลิป</label>
+                    <input type="file" 
+                           class="form-control form-control-glass" 
+                           id="slip" 
+                           name="payment_slip" 
+                           accept="image/*" 
+                           capture="environment"
+                           onchange="FXBot.previewPaymentSlip(this)"
+                           required>
+                    <small class="text-muted">รองรับ JPG, PNG (สูงสุด 5MB)</small>
+                </div>
+
+                <!-- Preview Area -->
+                <div id="slip-preview" class="mb-3"></div>
+
+                <div class="alert" style="background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 12px;">
+                    <small class="text-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        กรุณาตรวจสอบสลิปให้แน่ใจว่ายอดเงินและรายละเอียดถูกต้อง
+                    </small>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-upload me-2"></i>อัพโหลดสลิปใหม่
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Info -->
+        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.3s;">
+            <p class="text-muted" style="font-size: 13px;">
+                <i class="bi bi-headset me-1"></i>
+                ต้องการความช่วยเหลือ? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

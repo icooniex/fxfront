@@ -17,6 +17,7 @@
 
         <!-- Status Card -->
         <div class="glass-card text-start mb-4 fade-in" style="animation-delay: 0.2s; padding: 24px;">
+            {% if payment.payment_status == 'PENDING' %}
             <div class="d-flex align-items-center mb-3">
                 <div class="spinner-border spinner-primary me-3" role="status" style="width: 40px; height: 40px;">
                     <span class="visually-hidden">Loading...</span>
@@ -26,6 +27,31 @@
                     <p class="text-secondary mb-0" style="font-size: 13px;">ใช้เวลาประมาณ 5-15 นาที</p>
                 </div>
             </div>
+            {% elif payment.payment_status == 'COMPLETED' %}
+            <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-check-circle-fill text-profit me-3" style="font-size: 40px;"></i>
+                <div>
+                    <p class="mb-1" style="font-weight: 600;">ชำระเงินสำเร็จ</p>
+                    <p class="text-secondary mb-0" style="font-size: 13px;">บัญชีของคุณพร้อมใช้งานแล้ว</p>
+                </div>
+            </div>
+            {% elif payment.payment_status == 'FAILED' %}
+            <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-x-circle-fill text-loss me-3" style="font-size: 40px;"></i>
+                <div>
+                    <p class="mb-1" style="font-weight: 600;">การชำระเงินไม่สำเร็จ</p>
+                    <p class="text-secondary mb-0" style="font-size: 13px;">กรุณาอัพโหลดสลิปใหม่</p>
+                </div>
+            </div>
+            {% if payment.admin_notes %}
+            <div class="alert" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                <small class="text-loss">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    <strong>เหตุผล:</strong> {{ payment.admin_notes }}
+                </small>
+            </div>
+            {% endif %}
+            {% endif %}
 
             <div class="divider"></div>
 
@@ -45,8 +71,8 @@
                 <div class="col-6">
                     <p class="text-muted mb-1" style="font-size: 12px;">สถานะ</p>
                     <p class="mb-0">
-                        <span class="badge-glass" style="background: rgba(255, 165, 0, 0.15); border-color: orange; color: orange;">
-                            รอตรวจสอบ
+                        <span class="badge-glass {% if payment.payment_status == 'COMPLETED' %}badge-active{% elif payment.payment_status == 'FAILED' %}badge-down{% else %}badge-warning{% endif %}">
+                            {% if payment.payment_status == 'PENDING' %}รอตรวจสอบ{% elif payment.payment_status == 'COMPLETED' %}สำเร็จ{% elif payment.payment_status == 'FAILED' %}ไม่สำเร็จ{% else %}{{ payment.get_payment_status_display }}{% endif %}
                         </span>
                     </p>
                 </div>
@@ -54,6 +80,7 @@
         </div>
 
         <!-- Info -->
+        {% if payment.payment_status == 'PENDING' %}
         <div class="glass-card-static mb-4 fade-in" style="animation-delay: 0.3s; padding: 24px;">
             <div class="d-flex align-items-start text-start">
                 <i class="bi bi-info-circle text-primary-blue me-3 mt-1" style="font-size: 24px;"></i>
@@ -68,15 +95,26 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Actions -->
         <div class="d-grid gap-2 mb-4 fade-in" style="animation-delay: 0.4s;">
+            {% if payment.payment_status == 'FAILED' %}
+            <a href="{% url 'payment_reupload' payment.id %}" class="btn btn-primary-blue btn-lg">
+                <i class="bi bi-upload me-2"></i>อัพโหลดสลิปใหม่
+            </a>
+            {% elif payment.payment_status == 'COMPLETED' %}
+            <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
+                <i class="bi bi-house-door me-2"></i>ไปที่หน้าหลัก
+            </a>
+            {% else %}
             <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
                 <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
             </a>
             <button type="button" class="btn btn-glass" onclick="refreshStatus()">
                 <i class="bi bi-arrow-clockwise me-2"></i>ตรวจสอบสถานะ
             </button>
+            {% endif %}
         </div>
 
         <!-- Contact -->

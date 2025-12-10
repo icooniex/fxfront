@@ -17,7 +17,8 @@ from .models import (
     SubscriptionPayment,
     BotStrategy,
     BacktestResult,
-    BotStatus
+    BotStatus,
+    PaymentStatus
 )
 
 
@@ -568,6 +569,40 @@ def payment_pending_view(request, payment_id):
     return render(request, 'subscription/payment_pending.html', context)
 
 
+@login_required
+def payment_reupload_view(request, payment_id):
+    """Allow user to re-upload payment slip if payment was marked as FAILED"""
+    payment = get_object_or_404(SubscriptionPayment, id=payment_id, user=request.user)
+    
+    # Only allow re-upload if payment status is FAILED
+    if payment.payment_status != PaymentStatus.FAILED:
+        messages.error(request, 'ไม่สามารถอัพโหลดสลิปใหม่ได้ สถานะการชำระเงินไม่ถูกต้อง')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        payment_slip = request.FILES.get('payment_slip')
+        
+        if not payment_slip:
+            messages.error(request, 'กรุณาเลือกไฟล์สลิปโอนเงิน')
+            return redirect('payment_reupload', payment_id=payment.id)
+        
+        # Update payment with new slip
+        payment.payment_slip = payment_slip
+        payment.payment_status = PaymentStatus.PENDING  # Reset to PENDING
+        payment.payment_date = timezone.now()  # Update payment date
+        payment.admin_notes = ''  # Clear old admin notes
+        payment.save()
+        
+        messages.success(request, 'อัพโหลดสลิปใหม่สำเร็จ กรุณารอการตรวจสอบจากทีมงาน')
+        return redirect('payment_pending', payment_id=payment.id)
+    
+    context = {
+        'payment': payment,
+        'package': payment.subscription_package
+    }
+    return render(request, 'subscription/payment_reupload.html', context)
+
+
 # ============================================
 # Profile Views
 # ============================================
@@ -597,7 +632,9 @@ def profile_view(request):
             'start_date': account.subscription_start,
             'expiry_date': account.subscription_expiry,
             'days_remaining': max(0, days_remaining),
-            'payment_id': payment.id if payment else None
+            'payment_id': payment.id if payment else None,
+            'payment_status': payment.payment_status if payment else None,
+            'payment_admin_notes': payment.admin_notes if payment else None
         })
     
     # Calculate totals

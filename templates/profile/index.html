@@ -127,7 +127,24 @@
                     </div>
                 </div>
 
-                {% if sub.status == 'PENDING' %}
+                {% if sub.payment_status == 'FAILED' %}
+                <div class="mt-3">
+                    <div class="alert" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                        <small class="text-loss">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            <strong>การชำระเงินไม่สำเร็จ</strong>
+                            {% if sub.payment_admin_notes %}
+                            <br>{{ sub.payment_admin_notes }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    {% if sub.payment_id %}
+                    <a href="{% url 'payment_reupload' sub.payment_id %}" class="btn btn-danger-glass btn-sm w-100">
+                        <i class="bi bi-upload me-2"></i>อัพโหลดสลิปใหม่
+                    </a>
+                    {% endif %}
+                </div>
+                {% elif sub.status == 'PENDING' %}
                 <div class="mt-3">
                     {% if sub.payment_id %}
                     <a href="{% url 'payment_pending' sub.payment_id %}" class="btn btn-glass btn-sm w-100">

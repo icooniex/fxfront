@@ -26,6 +26,7 @@ urlpatterns = [
     path('subscription/payment/', views.payment_view, name='payment'),
     path('subscription/payment/submit/', views.payment_submit_view, name='payment_submit'),
     path('subscription/payment/<int:payment_id>/pending/', views.payment_pending_view, name='payment_pending'),
+    path('subscription/payment/<int:payment_id>/reupload/', views.payment_reupload_view, name='payment_reupload'),
     
     # Profile
     path('profile/', views.profile_view, name='profile'),
