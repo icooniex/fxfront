@@ -95,11 +95,11 @@
 
         {% if subscriptions %}
             {% for sub in subscriptions %}
-            <div class="subscription-info glass-card fade-in mb-2" style="animation-delay: 0.{{ forloop.counter }}s; padding: 16px;">
+            <div class="subscription-info glass-card fade-in mb-2" style="animation-delay: 0.{{ forloop.counter }}s; padding: 20px;">
                 <div class="subscription-header">
                     <span class="subscription-account">{{ sub.account.account_name }}</span>
-                    <span class="badge-glass {% if sub.status == 'ACTIVE' %}badge-active{% elif sub.status == 'EXPIRED' %}badge-down{% else %}badge-paused{% endif %}">
-                        {{ sub.get_status_display }}
+                    <span class="badge-glass {% if sub.status == 'ACTIVE' %}badge-active{% elif sub.status == 'EXPIRED' %}badge-down{% elif sub.status == 'PENDING' %}badge-warning{% else %}badge-paused{% endif %}">
+                        {% if sub.status == 'PENDING' %}รอตรวจสอบ{% elif sub.status == 'ACTIVE' %}Active{% elif sub.status == 'EXPIRED' %}หมดอายุ{% else %}{{ sub.get_status_display }}{% endif %}
                     </span>
                 </div>
 
@@ -127,7 +127,15 @@
                     </div>
                 </div>
 
-                {% if sub.days_remaining <= 7 and sub.days_remaining > 0 %}
+                {% if sub.status == 'PENDING' %}
+                <div class="mt-3">
+                    {% if sub.payment_id %}
+                    <a href="{% url 'payment_pending' sub.payment_id %}" class="btn btn-glass btn-sm w-100">
+                        <i class="bi bi-clock-history me-2"></i>ตรวจสอบสถานะการชำระเงิน
+                    </a>
+                    {% endif %}
+                </div>
+                {% elif sub.days_remaining <= 7 and sub.days_remaining > 0 %}
                 <div class="mt-3">
                     <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue btn-sm w-100">
                         <i class="bi bi-arrow-repeat me-2"></i>ต่ออายุ

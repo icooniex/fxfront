@@ -21,15 +21,21 @@
         <div id="accounts-container">
             {% if accounts %}
                 {% for account in accounts %}
-                <div class="account-card glass-card fade-in" data-account-id="{{ account.id }}" onclick="window.location.href='{% url 'account_detail' account.id %}'">
+                <div class="account-card glass-card fade-in" data-account-id="{{ account.id }}" {% if account.subscription_status != 'PENDING' %}onclick="window.location.href='{% url 'account_detail' account.id %}'" style="cursor: pointer;"{% else %}style="cursor: not-allowed; opacity: 0.7;"{% endif %}>
                     <div class="account-card-header">
                         <div>
                             <h3 class="account-name">{{ account.account_name }}</h3>
                             <p class="broker-name">{{ account.broker_name }}</p>
                         </div>
+                        {% if account.subscription_status == 'PENDING' %}
+                        <span class="badge-glass badge-warning">
+                            รอตรวจสอบ
+                        </span>
+                        {% else %}
                         <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}">
                             {{ account.get_bot_status_display }}
                         </span>
+                        {% endif %}
                     </div>
 
                     <div class="account-balance">

@@ -581,13 +581,23 @@ def profile_view(request):
     subscriptions = []
     for account in trade_accounts:
         days_remaining = (account.subscription_expiry - timezone.now()).days if account.subscription_expiry else 0
+        
+        # Find related payment
+        payment = SubscriptionPayment.objects.filter(
+            user=request.user,
+            subscription_package=account.subscription_package,
+            trade_account=account
+        ).order_by('-created_at').first()
+        
         subscriptions.append({
             'account': account,
             'package': account.subscription_package,
             'status': account.subscription_status,
+            'get_status_display': account.get_subscription_status_display(),
             'start_date': account.subscription_start,
             'expiry_date': account.subscription_expiry,
-            'days_remaining': max(0, days_remaining)
+            'days_remaining': max(0, days_remaining),
+            'payment_id': payment.id if payment else None
         })
     
     # Calculate totals
