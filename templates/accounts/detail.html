@@ -75,8 +75,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <h5 class="mb-0" style="font-size: 1rem;">🤖 {{ account.active_bot.name }} <span style="opacity: 0.6; font-size: 0.85rem; font-weight: 400;">v{{ account.active_bot.version }}</span></h5>
                         </div>
-                        <span class="badge-glass {% if account.active_bot.status == 'ACTIVE' %}badge-active{% elif account.active_bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}" style="font-size: 0.7rem;">
-                            {{ account.active_bot.get_status_display }}
+                        <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}" style="font-size: 0.7rem;">
+                            {{ account.get_bot_status_display }}
                         </span>
                     </div>
                     
@@ -245,24 +245,33 @@
     <div class="bot-control-container">
         <div class="bot-status-row">
             <div>
-                <span class="bot-status-label">Bot Status:</span>
-                <span class="badge-glass ms-2 {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}">
-                    {{ account.get_bot_status_display }}
-                </span>
+                {% if account.active_bot %}
+                <div class="mb-1" style="font-size: 0.85rem; font-weight: 500;">
+                    🤖 {{ account.active_bot.name }}
+                </div>
+                {% endif %}
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}" style="font-size: 0.75rem; padding: 3px 10px;">
+                        {{ account.get_bot_status_display }}
+                    </span>
+                    <span style="font-size: 0.75rem; opacity: 0.6;">v{{ account.active_bot.version }}</span>
+                </div>
             </div>
             <div class="bot-controls">
-                <button class="btn btn-glass control-btn" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                {% if account.active_bot %}
+                <button class="btn btn-glass control-btn" data-bs-toggle="modal" data-bs-target="#botConfigModal">
                     <i class="bi bi-gear"></i>
-                    <span>Settings</span>
+                    <span>Config Bot</span>
                 </button>
+                {% endif %}
             </div>
         </div>
         {% if account.bot_status == 'ACTIVE' %}
-        <button class="btn btn-danger-glass w-100 mt-2" onclick="FXBot.pauseBot({{ account.id }})">
+        <button class="btn btn-danger-glass w-100 mt-2" data-bs-toggle="modal" data-bs-target="#pauseBotModal">
             <i class="bi bi-pause-circle me-2"></i>Pause Bot & Clear Orders
         </button>
         {% else %}
-        <button class="btn btn-primary-blue w-100 mt-2" onclick="FXBot.resumeBot({{ account.id }})">
+        <button class="btn btn-primary-blue w-100 mt-2" data-bs-toggle="modal" data-bs-target="#resumeBotModal">
             <i class="bi bi-play-circle me-2"></i>Resume Bot
         </button>
         {% endif %}
@@ -334,6 +343,64 @@
     </div>
 </div>
 
+<!-- Pause Bot Modal -->
+<div class="modal fade" id="pauseBotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pause Bot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'account_bot_pause' account.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-pause-circle text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0">คุณต้องการหยุด Bot ชั่วคราวและปิด Orders ทั้งหมดหรือไม่?</p>
+                    {% if account.active_bot %}
+                    <p class="text-center text-primary-blue mb-0 mt-2" style="font-weight: 600;">{{ account.active_bot.name }}</p>
+                    {% endif %}
+                    <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot จะหยุดการเทรดอัตโนมัติทันที</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger">ยืนยัน Pause Bot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Resume Bot Modal -->
+<div class="modal fade" id="resumeBotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resume Bot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'account_bot_resume' account.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-play-circle text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0">คุณต้องการเปิดใช้ Bot อีกครั้งหรือไม่?</p>
+                    {% if account.active_bot %}
+                    <p class="text-center text-primary-blue mb-0 mt-2" style="font-weight: 600;">{{ account.active_bot.name }}</p>
+                    {% endif %}
+                    <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot จะเริ่มการเทรดอัตโนมัติทันที</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary-blue">ยืนยัน Resume Bot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Bot Config Modal -->
 <div class="modal fade" id="botConfigModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -382,67 +449,6 @@
                     <button type="submit" class="btn btn-primary-blue">Save Configuration</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Settings Modal -->
-<div class="modal fade" id="settingsModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Bot Settings</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="settingsForm">
-                    <div class="setting-item">
-                        <div>
-                            <div class="setting-label">Lot Size</div>
-                            <div class="setting-description">จำนวน Lot ในการเทรด</div>
-                        </div>
-                        <input type="number" class="form-control-glass" style="width: 100px;" value="{{ account.trade_config.lot_size|default:'0.01' }}" step="0.01" min="0.01">
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="setting-item">
-                        <div>
-                            <div class="setting-label">Timeframe M5</div>
-                            <div class="setting-description">เปิดการเทรด 5 นาที</div>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="tf_m5" {% if account.trade_config.timeframes.M5 %}checked{% endif %}>
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div>
-                            <div class="setting-label">Timeframe M15</div>
-                            <div class="setting-description">เปิดการเทรด 15 นาที</div>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="tf_m15" {% if account.trade_config.timeframes.M15 %}checked{% endif %}>
-                        </div>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="setting-item">
-                        <div>
-                            <div class="setting-label">Notifications</div>
-                            <div class="setting-description">รับการแจ้งเตือนทาง LINE</div>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="notifications" {% if account.trade_config.notifications %}checked{% endif %}>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary-blue">Save Settings</button>
-            </div>
         </div>
     </div>
 </div>

@@ -16,7 +16,8 @@ from .models import (
     TradeTransaction,
     SubscriptionPayment,
     BotStrategy,
-    BacktestResult
+    BacktestResult,
+    BotStatus
 )
 
 
@@ -420,6 +421,44 @@ def account_update_bot_config(request, account_id):
     account.save()
     
     messages.success(request, 'อัพเดทการตั้งค่า Bot เรียบร้อยแล้ว')
+    return redirect('account_detail', account_id=account_id)
+
+
+@login_required
+def account_bot_pause_view(request, account_id):
+    """Pause bot for an account"""
+    if request.method != 'POST':
+        return redirect('account_detail', account_id=account_id)
+    
+    account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user)
+    
+    if account.bot_status == 'PAUSED':
+        messages.warning(request, 'Bot อยู่ในสถานะ Pause อยู่แล้ว')
+    else:
+        account.bot_status = 'PAUSED'
+        account.save(update_fields=['bot_status', 'updated_at'])
+        messages.success(request, f'Bot ถูก Pause เรียบร้อยแล้ว')
+    
+    return redirect('account_detail', account_id=account_id)
+
+
+@login_required
+def account_bot_resume_view(request, account_id):
+    """Resume bot for an account"""
+    if request.method != 'POST':
+        return redirect('account_detail', account_id=account_id)
+    
+    account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user)
+    
+    if not account.active_bot:
+        messages.error(request, 'ไม่มี Bot ที่เชื่อมต่ออยู่ กรุณาเลือก Bot ก่อน')
+    elif account.bot_status == 'ACTIVE':
+        messages.warning(request, 'Bot กำลังทำงานอยู่แล้ว')
+    else:
+        account.bot_status = 'ACTIVE'
+        account.save(update_fields=['bot_status', 'updated_at'])
+        messages.success(request, f'Bot เริ่มทำงานอีกครั้งเรียบร้อยแล้ว')
+    
     return redirect('account_detail', account_id=account_id)
 
 

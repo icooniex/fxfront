@@ -39,6 +39,8 @@ urlpatterns = [
     path('account/<int:account_id>/bot/activate/', views.account_bot_activate_view, name='account_bot_activate'),
     path('account/<int:account_id>/bot/deactivate/', views.account_bot_deactivate_view, name='account_bot_deactivate'),
     path('account/<int:account_id>/bot/config/', views.account_update_bot_config, name='account_update_bot_config'),
+    path('account/<int:account_id>/bot/pause/', views.account_bot_pause_view, name='account_bot_pause'),
+    path('account/<int:account_id>/bot/resume/', views.account_bot_resume_view, name='account_bot_resume'),
     
     # Bot API
     path('api/bot/', include('trading.api.urls')),
