@@ -603,11 +603,13 @@ def bot_heartbeat(request):
     
     # Get trade config and strategy parameters
     trade_config = trade_account.trade_config or {}
-    strategy_parameters = None
     strategy_info = None
     
     if trade_account.active_bot:
-        strategy_parameters = trade_account.active_bot.current_parameters or {}
+        # Get current_parameters which should be organized by symbol
+        # Format: {"EURUSD": {...params...}, "GBPUSD": {...params...}}
+        current_parameters = trade_account.active_bot.current_parameters or {}
+        
         strategy_info = {
             'id': trade_account.active_bot.id,
             'name': trade_account.active_bot.name,
@@ -615,7 +617,7 @@ def bot_heartbeat(request):
             'strategy_type': trade_account.active_bot.strategy_type,
             'status': trade_account.active_bot.status,
             'allowed_symbols': trade_account.active_bot.allowed_symbols,
-            'parameters': strategy_parameters,
+            'parameters_by_symbol': current_parameters,
         }
     
     return JsonResponse({
