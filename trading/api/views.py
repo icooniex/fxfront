@@ -411,7 +411,7 @@ def batch_create_update_orders(request):
                 })
                 continue
             
-            if order_data.get('close_reason') and order_data['close_reason'] not in ['MANUAL', 'TP', 'SL', 'MARGIN_CALL']:
+            if order_data.get('close_reason') and order_data['close_reason'] not in ['MANUAL', 'TP', 'SL', 'MARGIN_CALL', 'Mobile', 'Web', 'Expert']:
                 results['failed'].append({
                     'index': idx,
                     'order_id': mt5_order_id,
