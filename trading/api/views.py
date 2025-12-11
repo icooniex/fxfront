@@ -626,6 +626,7 @@ def bot_heartbeat(request):
         'message': 'Heartbeat received',
         'server_time': timezone.now().isoformat(),
         'should_continue': should_continue,
+        'bot_status': trade_account.bot_status,
         'subscription_status': trade_account.subscription_status,
         'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0,
         'trade_config': trade_config,
