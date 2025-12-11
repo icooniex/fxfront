@@ -334,12 +334,30 @@ class BotAPITestCase(TestCase):
         self.assertLessEqual(account_data['days_remaining'], 10)
     
     def test_bot_heartbeat_success(self):
-        """Test sending bot heartbeat successfully"""
+        """Test sending bot heartbeat successfully with trade config and strategy parameters"""
+        # Create bot strategy
+        bot_strategy = BotStrategy.objects.create(
+            name='Test Strategy',
+            description='Test strategy for heartbeat',
+            version='1.0.0',
+            strategy_type='GRID',
+            status='ACTIVE',
+            allowed_symbols=['EURUSD', 'GBPUSD'],
+            current_parameters={
+                'grid_spacing': 10,
+                'take_profit': 20,
+                'stop_loss': 50
+            }
+        )
+        
+        # Link strategy to account
+        self.trade_account.active_bot = bot_strategy
+        self.trade_account.save()
+        
         heartbeat_data = {
             'mt5_account_id': '12345678',
             'bot_status': 'ACTIVE',
-            'current_balance': '10100.50',
-            'timestamp': '2025-11-19T10:30:00Z'
+            'current_balance': '10100.50'
         }
         
         response = self.client.post(
@@ -350,15 +368,65 @@ class BotAPITestCase(TestCase):
         
         self.assertEqual(response.status_code, 200)
         data = response.json()
+        
+        # Verify basic response
         self.assertEqual(data['status'], 'success')
         self.assertIn('should_continue', data)
         self.assertTrue(data['should_continue'])
+        self.assertIn('server_time', data)
+        
+        # Verify trade_config is included
+        self.assertIn('trade_config', data)
+        self.assertEqual(data['trade_config']['lot_size'], 0.1)
+        self.assertIn('timeframes', data['trade_config'])
+        
+        # Verify strategy info is included
+        self.assertIn('strategy', data)
+        self.assertIsNotNone(data['strategy'])
+        self.assertEqual(data['strategy']['name'], 'Test Strategy')
+        self.assertEqual(data['strategy']['version'], '1.0.0')
+        self.assertEqual(data['strategy']['status'], 'ACTIVE')
+        self.assertEqual(data['strategy']['strategy_type'], 'GRID')
+        
+        # Verify strategy parameters are included
+        self.assertIn('strategy_parameters', data)
+        self.assertIsNotNone(data['strategy_parameters'])
+        self.assertEqual(data['strategy_parameters']['grid_spacing'], 10)
+        self.assertEqual(data['strategy_parameters']['take_profit'], 20)
+        self.assertEqual(data['strategy_parameters']['stop_loss'], 50)
         
         # Verify account was updated
         self.trade_account.refresh_from_db()
         self.assertEqual(self.trade_account.bot_status, 'ACTIVE')
         self.assertEqual(self.trade_account.current_balance, Decimal('10100.50'))
         self.assertIsNotNone(self.trade_account.last_sync_datetime)
+    
+    def test_bot_heartbeat_without_strategy(self):
+        """Test heartbeat when no strategy is linked to account"""
+        heartbeat_data = {
+            'mt5_account_id': '12345678',
+            'bot_status': 'ACTIVE',
+            'current_balance': '10000.00'
+        }
+        
+        response = self.client.post(
+            '/api/bot/heartbeat/',
+            data=json.dumps(heartbeat_data),
+            **self.api_headers
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        
+        # Verify trade_config is still included
+        self.assertIn('trade_config', data)
+        self.assertEqual(data['trade_config']['lot_size'], 0.1)
+        
+        # Verify strategy fields are None when no strategy linked
+        self.assertIn('strategy', data)
+        self.assertIsNone(data['strategy'])
+        self.assertIn('strategy_parameters', data)
+        self.assertIsNone(data['strategy_parameters'])
     
     def test_bot_heartbeat_expired_subscription(self):
         """Test heartbeat with expired subscription"""
@@ -435,6 +503,43 @@ class BotAPITestCase(TestCase):
         # Verify status was updated
         self.trade_account.refresh_from_db()
         self.assertEqual(self.trade_account.bot_status, 'PAUSED')
+    
+    def test_bot_heartbeat_with_paused_strategy(self):
+        """Test heartbeat when strategy is paused by user"""
+        # Create paused bot strategy
+        bot_strategy = BotStrategy.objects.create(
+            name='Paused Strategy',
+            description='Test paused strategy',
+            version='1.0.0',
+            strategy_type='GRID',
+            status='PAUSED',  # Strategy is paused
+            allowed_symbols=['EURUSD'],
+            current_parameters={'grid_spacing': 15}
+        )
+        
+        self.trade_account.active_bot = bot_strategy
+        self.trade_account.save()
+        
+        heartbeat_data = {
+            'mt5_account_id': '12345678',
+            'bot_status': 'ACTIVE'
+        }
+        
+        response = self.client.post(
+            '/api/bot/heartbeat/',
+            data=json.dumps(heartbeat_data),
+            **self.api_headers
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        
+        # Verify strategy status is PAUSED in response
+        self.assertIn('strategy', data)
+        self.assertEqual(data['strategy']['status'], 'PAUSED')
+        
+        # Bot should check this status and stop trading
+        self.assertIsNotNone(data['strategy_parameters'])
     
     def test_invalid_api_key(self):
         """Test API call with invalid API key"""
