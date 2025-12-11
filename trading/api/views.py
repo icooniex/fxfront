@@ -539,6 +539,9 @@ def bot_heartbeat(request):
     """
     Receive bot heartbeat ping to indicate bot is still running.
     Bot should call this endpoint regularly (e.g., every 60 seconds).
+    
+    Also returns trade configuration and strategy parameters in the response,
+    so bot can update its settings without making additional API calls.
     """
     try:
         data = json.loads(request.body)
@@ -555,9 +558,9 @@ def bot_heartbeat(request):
             'message': 'mt5_account_id is required'
         }, status=400)
     
-    # Find the trade account
+    # Find the trade account with strategy info
     try:
-        trade_account = UserTradeAccount.objects.get(
+        trade_account = UserTradeAccount.objects.select_related('active_bot').get(
             mt5_account_id=str(data['mt5_account_id']),
             is_active=True
         )
@@ -598,13 +601,32 @@ def bot_heartbeat(request):
         trade_account.subscription_expiry > timezone.now()
     )
     
+    # Get trade config and strategy parameters
+    trade_config = trade_account.trade_config or {}
+    strategy_parameters = None
+    strategy_info = None
+    
+    if trade_account.active_bot:
+        strategy_parameters = trade_account.active_bot.current_parameters or {}
+        strategy_info = {
+            'id': trade_account.active_bot.id,
+            'name': trade_account.active_bot.name,
+            'version': trade_account.active_bot.version,
+            'strategy_type': trade_account.active_bot.strategy_type,
+            'status': trade_account.active_bot.status,
+            'allowed_symbols': trade_account.active_bot.allowed_symbols,
+            'parameters': strategy_parameters,
+        }
+    
     return JsonResponse({
         'status': 'success',
         'message': 'Heartbeat received',
         'server_time': timezone.now().isoformat(),
         'should_continue': should_continue,
         'subscription_status': trade_account.subscription_status,
-        'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0
+        'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0,
+        'trade_config': trade_config,
+        'strategy': strategy_info,
     }, status=200)
 
 
