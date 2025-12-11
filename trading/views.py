@@ -288,6 +288,12 @@ def dashboard_view(request):
     
     # Enrich accounts with additional data
     for account in accounts:
+        # Check bot status based on last sync
+        if account.last_sync_datetime:
+            time_since_sync = timezone.now() - account.last_sync_datetime
+            if time_since_sync.total_seconds() > 300:  # 5 minutes = 300 seconds
+                account.bot_status = 'DOWN'
+        
         # Count open positions
         account.open_positions_count = TradeTransaction.objects.filter(
             trade_account=account,
@@ -324,6 +330,12 @@ def dashboard_view(request):
 def account_detail_view(request, account_id):
     """Detailed view of a trading account"""
     account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user, is_active=True)
+    
+    # Check bot status based on last sync
+    if account.last_sync_datetime:
+        time_since_sync = timezone.now() - account.last_sync_datetime
+        if time_since_sync.total_seconds() > 300:  # 5 minutes = 300 seconds
+            account.bot_status = 'DOWN'
     
     # Get open positions
     open_positions = TradeTransaction.objects.filter(
