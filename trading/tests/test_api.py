@@ -388,12 +388,12 @@ class BotAPITestCase(TestCase):
         self.assertEqual(data['strategy']['status'], 'ACTIVE')
         self.assertEqual(data['strategy']['strategy_type'], 'GRID')
         
-        # Verify strategy parameters are included
-        self.assertIn('strategy_parameters', data)
-        self.assertIsNotNone(data['strategy_parameters'])
-        self.assertEqual(data['strategy_parameters']['grid_spacing'], 10)
-        self.assertEqual(data['strategy_parameters']['take_profit'], 20)
-        self.assertEqual(data['strategy_parameters']['stop_loss'], 50)
+        # Verify strategy parameters are included in strategy object
+        self.assertIn('parameters', data['strategy'])
+        self.assertIsNotNone(data['strategy']['parameters'])
+        self.assertEqual(data['strategy']['parameters']['grid_spacing'], 10)
+        self.assertEqual(data['strategy']['parameters']['take_profit'], 20)
+        self.assertEqual(data['strategy']['parameters']['stop_loss'], 50)
         
         # Verify account was updated
         self.trade_account.refresh_from_db()
@@ -422,11 +422,9 @@ class BotAPITestCase(TestCase):
         self.assertIn('trade_config', data)
         self.assertEqual(data['trade_config']['lot_size'], 0.1)
         
-        # Verify strategy fields are None when no strategy linked
+        # Verify strategy field is None when no strategy linked
         self.assertIn('strategy', data)
         self.assertIsNone(data['strategy'])
-        self.assertIn('strategy_parameters', data)
-        self.assertIsNone(data['strategy_parameters'])
     
     def test_bot_heartbeat_expired_subscription(self):
         """Test heartbeat with expired subscription"""
@@ -539,7 +537,8 @@ class BotAPITestCase(TestCase):
         self.assertEqual(data['strategy']['status'], 'PAUSED')
         
         # Bot should check this status and stop trading
-        self.assertIsNotNone(data['strategy_parameters'])
+        self.assertIn('parameters', data['strategy'])
+        self.assertIsNotNone(data['strategy']['parameters'])
     
     def test_invalid_api_key(self):
         """Test API call with invalid API key"""
