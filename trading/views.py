@@ -451,11 +451,45 @@ def account_update_bot_config(request, account_id):
     if package and package.allow_news_filter:
         auto_pause_on_news = request.POST.get('auto_pause_on_news') == 'on'
     
+    # Get drawdown protection settings (only if package allows)
+    daily_dd_limit = None
+    max_dd_limit = None
+    if package and package.allow_dd_protection:
+        try:
+            daily_dd_value = request.POST.get('daily_dd_limit', '').strip()
+            if daily_dd_value:
+                daily_dd_limit = float(daily_dd_value)
+                if daily_dd_limit < 0 or daily_dd_limit > 100:
+                    messages.error(request, 'Daily Drawdown Limit ต้องอยู่ระหว่าง 0-100%')
+                    return redirect('account_detail', account_id=account_id)
+                # If it's 0, treat as disabled
+                if daily_dd_limit == 0:
+                    daily_dd_limit = None
+        except (ValueError, TypeError):
+            messages.error(request, 'Daily Drawdown Limit ไม่ถูกต้อง')
+            return redirect('account_detail', account_id=account_id)
+        
+        try:
+            max_dd_value = request.POST.get('max_dd_limit', '').strip()
+            if max_dd_value:
+                max_dd_limit = float(max_dd_value)
+                if max_dd_limit < 0 or max_dd_limit > 100:
+                    messages.error(request, 'Max Account Drawdown ต้องอยู่ระหว่าง 0-100%')
+                    return redirect('account_detail', account_id=account_id)
+                # If it's 0, treat as disabled
+                if max_dd_limit == 0:
+                    max_dd_limit = None
+        except (ValueError, TypeError):
+            messages.error(request, 'Max Account Drawdown ไม่ถูกต้อง')
+            return redirect('account_detail', account_id=account_id)
+    
     # Update trade_config
     trade_config = account.trade_config or {}
     trade_config['enabled_symbols'] = enabled_symbols
     trade_config['lot_size'] = float(lot_size)
     trade_config['auto_pause_on_news'] = auto_pause_on_news
+    trade_config['daily_dd_limit'] = daily_dd_limit
+    trade_config['max_dd_limit'] = max_dd_limit
     
     account.trade_config = trade_config
     account.save()

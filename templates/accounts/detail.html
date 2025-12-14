@@ -480,6 +480,53 @@
                     </div>
                     {% endif %}
                     
+                    {% if account.subscription_package.allow_dd_protection %}
+                    <div class="divider"></div>
+                    
+                    <!-- Drawdown Protection -->
+                    <div class="setting-section">
+                        <div class="setting-label mb-3">🛡️ Drawdown Protection</div>
+                        
+                        <div class="mb-3">
+                            <label for="dailyDdLimit" class="form-label" style="font-size: 0.875rem; font-weight: 500;">
+                                Daily Drawdown Limit (%)
+                            </label>
+                            <div class="setting-description mb-2">
+                                จำกัดการขาดทุนต่อวัน คำนวณจาก Equity ณ ต้นวัน (เช่น 5% = ถ้าขาดทุน 5% ใน 1 วัน Bot จะหยุดเทรด)
+                            </div>
+                            <input type="number" 
+                                class="form-control-glass" 
+                                id="dailyDdLimit" 
+                                name="daily_dd_limit" 
+                                value="{{ account.trade_config.daily_dd_limit|default:'' }}"
+                                placeholder=""
+                                min="0" 
+                                max="100" 
+                                step="0.1">
+                            <div class="form-text" style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="maxDdLimit" class="form-label" style="font-size: 0.875rem; font-weight: 500;">
+                                Max Account Drawdown (%)
+                            </label>
+                            <div class="setting-description mb-2">
+                                จำกัดการขาดทุนสูงสุดของบัญชี คำนวณจาก Initial Balance (เช่น 20% = ถ้าขาดทุนสะสม 20% Bot จะหยุดเทรด)
+                            </div>
+                            <input type="number" 
+                                class="form-control-glass" 
+                                id="maxDdLimit" 
+                                name="max_dd_limit" 
+                                value="{{ account.trade_config.max_dd_limit|default:'' }}"
+                                placeholder=""
+                                min="0" 
+                                max="100" 
+                                step="0.1">
+                            <div class="form-text" style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% endif %}
                 </div>
                 <div class="modal-footer">

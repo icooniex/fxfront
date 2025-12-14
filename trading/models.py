@@ -117,6 +117,10 @@ class SubscriptionPackage(TimeStampedModel):
         default=False,
         help_text="Allow automatic bot pause during high-impact news events"
     )
+    allow_dd_protection = models.BooleanField(
+        default=False,
+        help_text="Allow drawdown protection configuration"
+    )
 
     class Meta:
         verbose_name = 'Subscription Package'
