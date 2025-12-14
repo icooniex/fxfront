@@ -462,6 +462,24 @@
                             required>
                     </div>
                     <div id="lotSizeWarning" class="alert alert-warning mt-2" style="display: none; padding: 8px; font-size: 0.875rem;"></div>
+                    
+                    {% if account.subscription_package.allow_news_filter %}
+                    <div class="divider"></div>
+                    
+                    <!-- News Filter Option -->
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">🗞️ ปิด Bot ในวันมีข่าวแรง</div>
+                            <div class="setting-description">ปิด Bot อัตโนมัติในช่วงเวลาที่มีข่าวเศรษฐกิจสำคัญ (High Impact News)</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="auto_pause_on_news" id="autoPauseOnNews" 
+                                {% if account.trade_config.auto_pause_on_news %}checked{% endif %}>
+                            <label class="form-check-label" for="autoPauseOnNews"></label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% endif %}
                 </div>
                 <div class="modal-footer">

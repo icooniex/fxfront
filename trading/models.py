@@ -111,6 +111,12 @@ class SubscriptionPackage(TimeStampedModel):
         blank=True,
         help_text="Maximum lot size allowed (null = unlimited)"
     )
+    
+    # Feature flags
+    allow_news_filter = models.BooleanField(
+        default=False,
+        help_text="Allow automatic bot pause during high-impact news events"
+    )
 
     class Meta:
         verbose_name = 'Subscription Package'

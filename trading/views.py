@@ -446,10 +446,16 @@ def account_update_bot_config(request, account_id):
         messages.error(request, f'แพคเกจของคุณจำกัด Lot Size สูงสุดที่ {max_lot_size} เท่านั้น')
         return redirect('account_detail', account_id=account_id)
     
+    # Get auto pause on news setting (only if package allows)
+    auto_pause_on_news = False
+    if package and package.allow_news_filter:
+        auto_pause_on_news = request.POST.get('auto_pause_on_news') == 'on'
+    
     # Update trade_config
     trade_config = account.trade_config or {}
     trade_config['enabled_symbols'] = enabled_symbols
     trade_config['lot_size'] = float(lot_size)
+    trade_config['auto_pause_on_news'] = auto_pause_on_news
     
     account.trade_config = trade_config
     account.save()
