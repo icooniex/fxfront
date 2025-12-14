@@ -537,6 +537,18 @@ class BacktestResult(TimeStampedModel):
         blank=True,
         help_text="Equity curve chart image"
     )
+    comprehensive_analysis_image = models.ImageField(
+        upload_to='backtest_analysis/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text="Comprehensive analysis chart (Monte Carlo, Walk Forward)"
+    )
+    trading_graph_image = models.ImageField(
+        upload_to='backtest_trades/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text="Backtest trading graph showing entry/exit points"
+    )
     
     # Additional data
     raw_data = models.JSONField(
