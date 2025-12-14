@@ -89,6 +89,28 @@ class SubscriptionPackage(TimeStampedModel):
     price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price in THB")
     features = models.JSONField(default=dict, blank=True, help_text="Package features as JSON")
     description = models.TextField(blank=True)
+    
+    # Symbol pair limits
+    max_symbols = models.PositiveIntegerField(
+        default=1,
+        help_text="Maximum number of trading symbol pairs allowed (0 = unlimited)"
+    )
+    
+    # Lot size limits
+    min_lot_size = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.01'),
+        help_text="Minimum lot size allowed"
+    )
+    max_lot_size = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.01'),
+        null=True,
+        blank=True,
+        help_text="Maximum lot size allowed (null = unlimited)"
+    )
 
     class Meta:
         verbose_name = 'Subscription Package'
@@ -97,6 +119,20 @@ class SubscriptionPackage(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} - {self.duration_days} days - ฿{self.price}"
+    
+    def is_lot_size_valid(self, lot_size):
+        """Check if lot size is within package limits"""
+        if lot_size < self.min_lot_size:
+            return False
+        if self.max_lot_size and lot_size > self.max_lot_size:
+            return False
+        return True
+    
+    def get_max_symbols_display(self):
+        """Get display text for max symbols"""
+        if self.max_symbols == 0:
+            return "Unlimited"
+        return str(self.max_symbols)
 
 
 # User Trade Account Model

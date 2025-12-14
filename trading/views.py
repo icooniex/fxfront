@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 import requests
 import urllib.parse
 import secrets
@@ -404,10 +405,21 @@ def account_update_bot_config(request, account_id):
         messages.error(request, 'ไม่มี Bot ที่กำลังใช้งาน')
         return redirect('account_detail', account_id=account_id)
     
+    # Get package limits
+    package = account.subscription_package
+    max_symbols = package.max_symbols if package else 0
+    max_lot_size = package.max_lot_size if package else None
+    min_lot_size = package.min_lot_size if package else Decimal('0.01')
+    
     # Get enabled symbols
     enabled_symbols = request.POST.getlist('enabled_symbols')
     if not enabled_symbols:
         messages.error(request, 'กรุณาเลือกอย่างน้อย 1 Symbol')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Check symbol limit (0 = unlimited)
+    if max_symbols > 0 and len(enabled_symbols) > max_symbols:
+        messages.error(request, f'แพคเกจของคุณจำกัดการเลือกได้สูงสุด {max_symbols} คู่เงินเท่านั้น')
         return redirect('account_detail', account_id=account_id)
     
     # Validate symbols against bot's allowed symbols
@@ -418,17 +430,26 @@ def account_update_bot_config(request, account_id):
     
     # Get lot size
     try:
-        lot_size = float(request.POST.get('lot_size', 0.01))
+        lot_size = Decimal(str(request.POST.get('lot_size', '0.01')))
         if lot_size <= 0:
-            raise ValueError
-    except (ValueError, TypeError):
+            raise ValueError('Lot size must be greater than 0')
+    except (ValueError, TypeError, InvalidOperation):
         messages.error(request, 'Lot Size ไม่ถูกต้อง')
+        return redirect('account_detail', account_id=account_id)
+    
+    # Check lot size limits
+    if lot_size < min_lot_size:
+        messages.error(request, f'Lot Size ต้องไม่น้อยกว่า {min_lot_size}')
+        return redirect('account_detail', account_id=account_id)
+    
+    if max_lot_size and lot_size > max_lot_size:
+        messages.error(request, f'แพคเกจของคุณจำกัด Lot Size สูงสุดที่ {max_lot_size} เท่านั้น')
         return redirect('account_detail', account_id=account_id)
     
     # Update trade_config
     trade_config = account.trade_config or {}
     trade_config['enabled_symbols'] = enabled_symbols
-    trade_config['lot_size'] = lot_size
+    trade_config['lot_size'] = float(lot_size)
     
     account.trade_config = trade_config
     account.save()

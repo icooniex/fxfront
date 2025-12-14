@@ -414,10 +414,16 @@
                     <!-- Symbol Selection -->
                     <div class="mb-4">
                         <label class="setting-label mb-2">Trading Symbols</label>
-                        <div class="setting-description mb-3">เลือก Symbol ที่ต้องการเทรด (อย่างน้อย 1 รายการ)</div>
+                        <div class="setting-description mb-3">
+                            เลือก Symbol ที่ต้องการเทรด (อย่างน้อย 1 รายการ)
+                            {% if account.subscription_package.max_symbols > 0 %}
+                            <br><span class="text-warning">⚠️ แพคเกจของคุณจำกัดการเลือกได้สูงสุด {{ account.subscription_package.max_symbols }} คู่เงิน</span>
+                            {% endif %}
+                        </div>
                         {% for symbol in account.active_bot.allowed_symbols %}
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="enabled_symbols" value="{{ symbol }}" id="symbol_{{ symbol }}" 
+                            <input class="form-check-input symbol-checkbox" type="checkbox" name="enabled_symbols" value="{{ symbol }}" id="symbol_{{ symbol }}" 
+                                data-max-symbols="{{ account.subscription_package.max_symbols }}"
                                 {% if account.trade_config.enabled_symbols %}
                                     {% if symbol in account.trade_config.enabled_symbols %}checked{% endif %}
                                 {% else %}
@@ -428,6 +434,7 @@
                             </label>
                         </div>
                         {% endfor %}
+                        <div id="symbolLimitWarning" class="alert alert-warning mt-2" style="display: none; padding: 8px; font-size: 0.875rem;"></div>
                     </div>
 
                     <div class="divider"></div>
@@ -436,10 +443,25 @@
                     <div class="setting-item">
                         <div>
                             <div class="setting-label">Lot Size</div>
-                            <div class="setting-description">จำนวน Lot ในการเทรด</div>
+                            <div class="setting-description">
+                                จำนวน Lot ในการเทรด
+                                {% if account.subscription_package.max_lot_size %}
+                                <br><span class="text-warning">⚠️ จำกัดสูงสุดที่ {{ account.subscription_package.max_lot_size }}</span>
+                                {% endif %}
+                            </div>
                         </div>
-                        <input type="number" name="lot_size" class="form-control-glass" style="width: 120px;" value="{{ account.trade_config.lot_size|default:'0.01' }}" step="0.01" min="0.01" required>
+                        <input type="number" 
+                            id="lotSizeInput"
+                            name="lot_size" 
+                            class="form-control-glass" 
+                            style="width: 120px;" 
+                            value="{{ account.trade_config.lot_size|default:'0.01' }}" 
+                            step="0.01" 
+                            min="{{ account.subscription_package.min_lot_size|default:'0.01' }}"
+                            {% if account.subscription_package.max_lot_size %}max="{{ account.subscription_package.max_lot_size }}"{% endif %}
+                            required>
                     </div>
+                    <div id="lotSizeWarning" class="alert alert-warning mt-2" style="display: none; padding: 8px; font-size: 0.875rem;"></div>
                     {% endif %}
                 </div>
                 <div class="modal-footer">
@@ -467,6 +489,112 @@
             }
         }
     };
+
+    // Symbol Selection Limit Validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const symbolCheckboxes = document.querySelectorAll('.symbol-checkbox');
+        const warningDiv = document.getElementById('symbolLimitWarning');
+        const lotSizeInput = document.getElementById('lotSizeInput');
+        const lotSizeWarning = document.getElementById('lotSizeWarning');
+        
+        if (symbolCheckboxes.length > 0) {
+            const maxSymbols = parseInt(symbolCheckboxes[0].dataset.maxSymbols) || 0;
+            
+            function checkSymbolLimit() {
+                const checkedCount = document.querySelectorAll('.symbol-checkbox:checked').length;
+                
+                if (maxSymbols > 0) {
+                    if (checkedCount > maxSymbols) {
+                        warningDiv.textContent = `⚠️ คุณเลือกเกินจำนวนที่อนุญาต! (${checkedCount}/${maxSymbols})`;
+                        warningDiv.style.display = 'block';
+                        // Disable unchecked boxes
+                        symbolCheckboxes.forEach(cb => {
+                            if (!cb.checked) {
+                                cb.disabled = true;
+                            }
+                        });
+                    } else if (checkedCount === maxSymbols) {
+                        warningDiv.textContent = `ℹ️ คุณเลือกครบจำนวนที่อนุญาตแล้ว (${checkedCount}/${maxSymbols})`;
+                        warningDiv.style.display = 'block';
+                        // Disable unchecked boxes
+                        symbolCheckboxes.forEach(cb => {
+                            if (!cb.checked) {
+                                cb.disabled = true;
+                            }
+                        });
+                    } else {
+                        warningDiv.style.display = 'none';
+                        // Enable all boxes
+                        symbolCheckboxes.forEach(cb => {
+                            cb.disabled = false;
+                        });
+                    }
+                }
+            }
+            
+            symbolCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', checkSymbolLimit);
+            });
+            
+            // Initial check
+            checkSymbolLimit();
+        }
+        
+        // Lot Size Validation
+        if (lotSizeInput) {
+            const minLot = parseFloat(lotSizeInput.min) || 0.01;
+            const maxLot = lotSizeInput.max ? parseFloat(lotSizeInput.max) : null;
+            
+            lotSizeInput.addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                
+                if (isNaN(value)) {
+                    lotSizeWarning.textContent = '⚠️ กรุณากรอกตัวเลขที่ถูกต้อง';
+                    lotSizeWarning.style.display = 'block';
+                } else if (value < minLot) {
+                    lotSizeWarning.textContent = `⚠️ Lot Size ต้องไม่น้อยกว่า ${minLot}`;
+                    lotSizeWarning.style.display = 'block';
+                } else if (maxLot && value > maxLot) {
+                    lotSizeWarning.textContent = `⚠️ แพคเกจของคุณจำกัด Lot Size สูงสุดที่ ${maxLot}`;
+                    lotSizeWarning.style.display = 'block';
+                    this.value = maxLot;
+                } else {
+                    lotSizeWarning.style.display = 'none';
+                }
+            });
+            
+            // Form submit validation
+            document.getElementById('botConfigForm').addEventListener('submit', function(e) {
+                const checkedCount = document.querySelectorAll('.symbol-checkbox:checked').length;
+                const maxSymbols = parseInt(symbolCheckboxes[0]?.dataset.maxSymbols) || 0;
+                const lotValue = parseFloat(lotSizeInput.value);
+                
+                if (checkedCount === 0) {
+                    e.preventDefault();
+                    alert('กรุณาเลือกอย่างน้อย 1 Symbol');
+                    return;
+                }
+                
+                if (maxSymbols > 0 && checkedCount > maxSymbols) {
+                    e.preventDefault();
+                    alert(`คุณสามารถเลือกได้สูงสุด ${maxSymbols} คู่เงินเท่านั้น`);
+                    return;
+                }
+                
+                if (lotValue < minLot) {
+                    e.preventDefault();
+                    alert(`Lot Size ต้องไม่น้อยกว่า ${minLot}`);
+                    return;
+                }
+                
+                if (maxLot && lotValue > maxLot) {
+                    e.preventDefault();
+                    alert(`แพคเกจของคุณจำกัด Lot Size สูงสุดที่ ${maxLot}`);
+                    return;
+                }
+            });
+        }
+    });
 </script>
 <style>
     @keyframes spin {
