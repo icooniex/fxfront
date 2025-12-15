@@ -15,8 +15,13 @@
 
         <!-- Header -->
         <div class="mb-4 fade-in">
+            {% if renew_account %}
+            <h1 class="mb-2">ต่ออายุแพ็คเกจ</h1>
+            <p class="text-secondary">เลือกแพ็คเกจสำหรับต่ออายุ: <strong>{{ renew_account.account_name }}</strong></p>
+            {% else %}
             <h1 class="mb-2">เลือกแพ็คเกจ</h1>
             <p class="text-secondary">เลือกแพ็คเกจที่เหมาะสมกับคุณ</p>
+            {% endif %}
         </div>
 
         <!-- Packages List -->
@@ -102,9 +107,13 @@
         // Set hidden input value
         document.getElementById('selected-package').value = packageId;
         
-        // Navigate to payment page
+        // Navigate to payment page with package and optional renew_account
         setTimeout(() => {
-            window.location.href = `{% url 'payment' %}?package=${packageId}`;
+            let url = `{% url 'payment' %}?package=${packageId}`;
+            {% if renew_account %}
+            url += '&renew_account={{ renew_account.id }}';
+            {% endif %}
+            window.location.href = url;
         }, 300);
     }
 </script>

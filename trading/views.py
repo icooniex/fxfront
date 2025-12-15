@@ -551,6 +551,20 @@ def subscription_packages_view(request):
     """Display available subscription packages"""
     packages = SubscriptionPackage.objects.filter(is_active=True).order_by('price')
     
+    # Check if this is for renewal
+    renew_account_id = request.GET.get('renew_account')
+    renew_account = None
+    if renew_account_id:
+        try:
+            renew_account = UserTradeAccount.objects.get(
+                id=renew_account_id, 
+                user=request.user, 
+                is_active=True
+            )
+        except UserTradeAccount.DoesNotExist:
+            messages.error(request, 'ไม่พบบัญชีที่ต้องการต่ออายุ')
+            return redirect('profile')
+    
     # Add features list to each package
     for package in packages:
         if isinstance(package.features, dict):
@@ -566,7 +580,8 @@ def subscription_packages_view(request):
         package.is_popular = False
     
     context = {
-        'packages': packages
+        'packages': packages,
+        'renew_account': renew_account
     }
     return render(request, 'subscription/packages.html', context)
 
@@ -575,6 +590,7 @@ def subscription_packages_view(request):
 def payment_view(request):
     """Payment page with QR code"""
     package_id = request.GET.get('package')
+    renew_account_id = request.GET.get('renew_account')
     
     if not package_id:
         messages.error(request, 'กรุณาเลือกแพ็คเกจ')
@@ -582,8 +598,22 @@ def payment_view(request):
     
     package = get_object_or_404(SubscriptionPackage, id=package_id, is_active=True)
     
+    # Check if this is for renewal
+    renew_account = None
+    if renew_account_id:
+        try:
+            renew_account = UserTradeAccount.objects.get(
+                id=renew_account_id, 
+                user=request.user, 
+                is_active=True
+            )
+        except UserTradeAccount.DoesNotExist:
+            messages.error(request, 'ไม่พบบัญชีที่ต้องการต่ออายุ')
+            return redirect('profile')
+    
     context = {
-        'package': package
+        'package': package,
+        'renew_account': renew_account
     }
     return render(request, 'subscription/payment.html', context)
 
@@ -593,6 +623,7 @@ def payment_submit_view(request):
     """Handle payment slip upload"""
     if request.method == 'POST':
         package_id = request.POST.get('package_id')
+        renew_account_id = request.POST.get('renew_account_id')
         account_name = request.POST.get('account_name')
         mt5_account_id = request.POST.get('mt5_account_id')
         mt5_password = request.POST.get('mt5_password')
@@ -601,25 +632,63 @@ def payment_submit_view(request):
         
         package = get_object_or_404(SubscriptionPackage, id=package_id)
         
-        # Validate required fields
-        if not all([account_name, mt5_account_id, mt5_password, mt5_server, payment_slip]):
-            messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
-            return redirect('payment')
+        # Check if this is a renewal
+        is_renewal = False
+        trade_account = None
         
-        # Create trade account with MT5 credentials
-        trade_account = UserTradeAccount.objects.create(
-            user=request.user,
-            account_name=account_name,
-            mt5_account_id=mt5_account_id,
-            mt5_password=mt5_password,  # TODO: Should encrypt this in production
-            broker_name='Pending Setup',
-            mt5_server=mt5_server,
-            subscription_package=package,
-            subscription_start=timezone.now(),
-            subscription_expiry=timezone.now() + timedelta(days=package.duration_days),
-            subscription_status='PENDING',
-            bot_status='PAUSED'
-        )
+        if renew_account_id:
+            try:
+                trade_account = UserTradeAccount.objects.get(
+                    id=renew_account_id,
+                    user=request.user,
+                    is_active=True
+                )
+                is_renewal = True
+            except UserTradeAccount.DoesNotExist:
+                messages.error(request, 'ไม่พบบัญชีที่ต้องการต่ออายุ')
+                return redirect('profile')
+        
+        # Validate required fields based on renewal or new account
+        if is_renewal:
+            # For renewal, only payment slip is required
+            if not payment_slip:
+                messages.error(request, 'กรุณาอัพโหลดสลิปโอนเงิน')
+                return redirect('payment')
+            
+            # Update the trade account subscription details (will be activated after payment confirmation)
+            # Calculate new expiry date from current expiry or now (whichever is later)
+            current_expiry = trade_account.subscription_expiry
+            if current_expiry and current_expiry > timezone.now():
+                # Extend from current expiry
+                new_expiry = current_expiry + timedelta(days=package.duration_days)
+            else:
+                # Start fresh from now
+                new_expiry = timezone.now() + timedelta(days=package.duration_days)
+            
+            # Store the new expiry in a temporary field or track it through payment
+            # We'll update it when payment is confirmed
+            # For now, keep the account in current status
+            
+        else:
+            # For new account, all fields are required
+            if not all([account_name, mt5_account_id, mt5_password, mt5_server, payment_slip]):
+                messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+                return redirect('payment')
+            
+            # Create trade account with MT5 credentials
+            trade_account = UserTradeAccount.objects.create(
+                user=request.user,
+                account_name=account_name,
+                mt5_account_id=mt5_account_id,
+                mt5_password=mt5_password,  # TODO: Should encrypt this in production
+                broker_name='Pending Setup',
+                mt5_server=mt5_server,
+                subscription_package=package,
+                subscription_start=timezone.now(),
+                subscription_expiry=timezone.now() + timedelta(days=package.duration_days),
+                subscription_status='PENDING',
+                bot_status='PAUSED'
+            )
         
         # Create subscription payment record with trade_account
         payment = SubscriptionPayment.objects.create(
@@ -630,10 +699,16 @@ def payment_submit_view(request):
             payment_status='PENDING',
             payment_method='Bank Transfer',
             payment_slip=payment_slip,
-            payment_date=timezone.now()
+            payment_date=timezone.now(),
+            # Store renewal info in admin_notes for reference
+            admin_notes=f'Renewal for account: {trade_account.account_name}' if is_renewal else ''
         )
         
-        messages.success(request, 'ส่งหลักฐานการชำระเงินเรียบร้อย')
+        if is_renewal:
+            messages.success(request, f'ส่งหลักฐานการต่ออายุเรียบร้อย รอการตรวจสอบจากทีมงาน')
+        else:
+            messages.success(request, 'ส่งหลักฐานการชำระเงินเรียบร้อย')
+        
         return redirect('payment_pending', payment_id=payment.id)
     
     return redirect('subscription_packages')

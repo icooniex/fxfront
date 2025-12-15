@@ -15,8 +15,19 @@
 
         <!-- Header -->
         <div class="mb-4 fade-in">
+            {% if renew_account %}
+            <h1 class="mb-2">ชำระเงิน (ต่ออายุ)</h1>
+            <p class="text-secondary">สแกน QR Code หรือโอนผ่านธนาคาร</p>
+            <div class="alert mt-2" style="background: rgba(21, 139, 249, 0.1); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px;">
+                <small class="text-primary-blue">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>ต่ออายุสำหรับ:</strong> {{ renew_account.account_name }}
+                </small>
+            </div>
+            {% else %}
             <h1 class="mb-2">ชำระเงิน</h1>
             <p class="text-secondary">สแกน QR Code หรือโอนผ่านธนาคาร</p>
+            {% endif %}
         </div>
 
         <!-- Package Summary -->
@@ -102,6 +113,9 @@
         <form method="post" action="{% url 'payment_submit' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="package_id" value="{{ package.id }}">
+            {% if renew_account %}
+            <input type="hidden" name="renew_account_id" value="{{ renew_account.id }}">
+            {% endif %}
             
             <!-- Payment Slip Section -->
             <div class="glass-card mt-4 fade-in" style="animation-delay: 0.4s; padding: 24px;">
@@ -123,6 +137,7 @@
                 <!-- Preview Area -->
                 <div id="slip-preview" class="mb-3"></div>
 
+                {% if not renew_account %}
                 <div class="mb-0">
                     <label for="account_name" class="form-label">ชื่อบัญชีเทรด</label>
                     <input type="text" 
@@ -133,8 +148,10 @@
                            required>
                     <small class="text-muted">เช่น: Bot Account 1, My Trading</small>
                 </div>
+                {% endif %}
             </div>
 
+            {% if not renew_account %}
             <!-- MT5 Account Info Section -->
             <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
                 <h5 class="mb-2">ข้อมูลบัญชี MT5</h5>
@@ -175,6 +192,7 @@
                     <small class="text-muted">เช่น: Exness-MT5Trial7, XMGlobal-Real 5</small>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Submit Button -->
             <div class="glass-card mt-4 fade-in" style="animation-delay: 0.6s; padding: 24px;">

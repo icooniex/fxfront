@@ -154,13 +154,13 @@
                 </div>
                 {% elif sub.days_remaining <= 7 and sub.days_remaining > 0 %}
                 <div class="mt-3">
-                    <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue btn-sm w-100">
+                    <a href="{% url 'subscription_packages' %}?renew_account={{ sub.account.id }}" class="btn btn-primary-blue btn-sm w-100">
                         <i class="bi bi-arrow-repeat me-2"></i>ต่ออายุ
                     </a>
                 </div>
                 {% elif sub.status == 'EXPIRED' %}
                 <div class="mt-3">
-                    <a href="{% url 'subscription_packages' %}" class="btn btn-danger-glass btn-sm w-100">
+                    <a href="{% url 'subscription_packages' %}?renew_account={{ sub.account.id }}" class="btn btn-danger-glass btn-sm w-100">
                         <i class="bi bi-exclamation-triangle me-2"></i>ต่ออายุเดี๋ยวนี้
                     </a>
                 </div>

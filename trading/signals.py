@@ -35,17 +35,36 @@ def handle_payment_status_change(sender, instance, **kwargs):
             # Activate the account
             trade_account.subscription_status = SubscriptionStatus.ACTIVE
             
-            # Set subscription dates
-            if not trade_account.subscription_start or trade_account.subscription_status == SubscriptionStatus.PENDING:
-                trade_account.subscription_start = timezone.now()
+            # Check if this is a renewal by checking admin_notes
+            is_renewal = instance.admin_notes and 'Renewal for account:' in instance.admin_notes
             
-            # Calculate expiry date based on package duration
-            trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
+            if is_renewal:
+                # For renewal, extend from current expiry or start fresh
+                current_expiry = trade_account.subscription_expiry
+                if current_expiry and current_expiry > timezone.now():
+                    # Still active, extend from current expiry
+                    trade_account.subscription_expiry = current_expiry + timedelta(days=instance.subscription_package.duration_days)
+                else:
+                    # Expired or no expiry, start fresh
+                    trade_account.subscription_start = timezone.now()
+                    trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
+            else:
+                # New subscription
+                # Set subscription dates
+                if not trade_account.subscription_start or trade_account.subscription_status == SubscriptionStatus.PENDING:
+                    trade_account.subscription_start = timezone.now()
+                
+                # Calculate expiry date based on package duration
+                trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
+            
+            # Update package if changed (optional, for package upgrades)
+            if trade_account.subscription_package != instance.subscription_package:
+                trade_account.subscription_package = instance.subscription_package
             
             # Set verified timestamp
             instance.verified_at = timezone.now()
             
-            trade_account.save(update_fields=['subscription_status', 'subscription_start', 'subscription_expiry', 'updated_at'])
+            trade_account.save(update_fields=['subscription_status', 'subscription_start', 'subscription_expiry', 'subscription_package', 'updated_at'])
             
         # Handle FAILED status - keep account in PENDING, allow re-upload
         elif new_status == PaymentStatus.FAILED:
