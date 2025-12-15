@@ -774,12 +774,16 @@ def profile_view(request):
     for account in trade_accounts:
         days_remaining = (account.subscription_expiry - timezone.now()).days if account.subscription_expiry else 0
         
-        # Find related payment
+        # Find related payment (latest one)
         payment = SubscriptionPayment.objects.filter(
             user=request.user,
-            subscription_package=account.subscription_package,
             trade_account=account
         ).order_by('-created_at').first()
+        
+        # Check if there's a pending renewal payment
+        has_pending_renewal = False
+        if payment and payment.payment_status == 'PENDING' and payment.admin_notes and 'Renewal' in payment.admin_notes:
+            has_pending_renewal = True
         
         subscriptions.append({
             'account': account,
@@ -791,7 +795,8 @@ def profile_view(request):
             'days_remaining': max(0, days_remaining),
             'payment_id': payment.id if payment else None,
             'payment_status': payment.payment_status if payment else None,
-            'payment_admin_notes': payment.admin_notes if payment else None
+            'payment_admin_notes': payment.admin_notes if payment else None,
+            'has_pending_renewal': has_pending_renewal
         })
     
     # Calculate totals
