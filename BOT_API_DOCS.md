@@ -257,6 +257,112 @@ while True:
     time.sleep(60)  # Wait 60 seconds before next heartbeat
 ```
 
+---
+
+## 7. LINE Notification Endpoints
+
+**Description:** Send real-time notifications to users via LINE Messaging API. Users must have connected their LINE account via LINE Login first.
+
+### 7.1 Send Trade Notification
+
+**Endpoint:** `POST /api/notify/trade/`
+
+**Description:** Notify user when a trade is opened or closed.
+
+**Request Body (Trade Opened):**
+```json
+{
+  "mt5_account_id": "12345678",
+  "notification_type": "trade_opened",
+  "trade_data": {
+    "symbol": "EURUSD",
+    "position_type": "BUY",
+    "entry_price": "1.0850",
+    "lot_size": "0.10"
+  }
+}
+```
+
+**Request Body (Trade Closed):**
+```json
+{
+  "mt5_account_id": "12345678",
+  "notification_type": "trade_closed",
+  "trade_data": {
+    "symbol": "EURUSD",
+    "position_type": "BUY",
+    "entry_price": "1.0850",
+    "exit_price": "1.0860",
+    "lot_size": "0.10",
+    "profit_loss": "10.50",
+    "close_reason": "TP"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Notification sent successfully",
+  "notification_sent": true
+}
+```
+
+### 7.2 Send Bot Status Notification
+
+**Endpoint:** `POST /api/notify/bot-status/`
+
+**Description:** Notify user about bot status changes.
+
+**Request Body:**
+```json
+{
+  "mt5_account_id": "12345678",
+  "status": "PAUSED",
+  "reason": "Daily drawdown limit reached"
+}
+```
+
+### 7.3 Send Daily Summary
+
+**Endpoint:** `POST /api/notify/daily-summary/`
+
+**Description:** Send daily trading summary to user.
+
+**Request Body:**
+```json
+{
+  "mt5_account_id": "12345678",
+  "summary_data": {
+    "total_trades": 5,
+    "profit_loss": 125.50,
+    "win_rate": 60.0
+  }
+}
+```
+
+### 7.4 Send Account Alert
+
+**Endpoint:** `POST /api/notify/account-alert/`
+
+**Description:** Send account alerts (low balance, high drawdown, etc.).
+
+**Request Body:**
+```json
+{
+  "mt5_account_id": "12345678",
+  "alert_type": "Low Balance",
+  "message": "Your account balance is below $100"
+}
+```
+
+**Note:** If user has not connected LINE account, API returns success but with `notification_sent: false`. This ensures bot continues working even if notifications cannot be sent.
+
+See [LINE_NOTIFICATION_API.md](LINE_NOTIFICATION_API.md) for detailed documentation.
+
+---
+
 ## Security Notes
 
 1. **Keep API Key Secret:** Never commit API key to version control

@@ -22,4 +22,10 @@ urlpatterns = [
     path('bot/strategies/', views.get_bot_strategies, name='api_bot_strategies'),
     path('bot/backtest-result/', views.submit_backtest_result, name='api_submit_backtest_result'),
     path('bot/optimization-result/', views.submit_optimization_result, name='api_submit_optimization_result'),
+    
+    # LINE notification API
+    path('notify/trade/', views.send_trade_notification, name='api_notify_trade'),
+    path('notify/bot-status/', views.send_bot_status_notification, name='api_notify_bot_status'),
+    path('notify/daily-summary/', views.send_daily_summary_notification, name='api_notify_daily_summary'),
+    path('notify/account-alert/', views.send_account_alert_notification, name='api_notify_account_alert'),
 ]

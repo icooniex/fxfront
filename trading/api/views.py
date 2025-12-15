@@ -10,8 +10,10 @@ from trading.models import (
     TradeTransaction, 
     UserTradeAccount, 
     BotStrategy, 
-    BacktestResult
+    BacktestResult,
+    UserProfile
 )
+from trading.line_notify import trading_notifications
 from .authentication import require_bot_api_key
 import json
 from datetime import datetime, date
@@ -1234,3 +1236,394 @@ def submit_optimization_result(request):
         }
     }, status=200)
 
+
+# ============================================
+# LINE Notification API Endpoints
+# ============================================
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def send_trade_notification(request):
+    """
+    Send LINE notification when a trade is opened or closed
+    
+    Expected JSON body:
+    {
+        "mt5_account_id": "12345678",
+        "notification_type": "trade_opened" or "trade_closed",
+        "trade_data": {
+            "symbol": "EURUSD",
+            "position_type": "BUY" or "SELL",
+            "entry_price": "1.0850",
+            "exit_price": "1.0860",  // for trade_closed
+            "lot_size": "0.10",
+            "profit_loss": "10.50",  // for trade_closed
+            "close_reason": "TP"  // for trade_closed
+        }
+    }
+    
+    Returns:
+        JSON response with status and notification result
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['mt5_account_id', 'notification_type', 'trade_data']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid data',
+            'errors': errors
+        }, status=400)
+    
+    # Validate notification_type
+    notification_type = data['notification_type']
+    if notification_type not in ['trade_opened', 'trade_closed']:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid notification_type. Must be "trade_opened" or "trade_closed"'
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.select_related('user__profile').get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Get user profile
+    try:
+        user_profile = trade_account.user.profile
+    except UserProfile.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'User profile not found'
+        }, status=404)
+    
+    # Check if user has connected LINE
+    if not user_profile.is_line_connected():
+        return JsonResponse({
+            'status': 'success',
+            'message': 'User has not connected LINE account, notification skipped',
+            'notification_sent': False
+        }, status=200)
+    
+    # Prepare trade data
+    trade_data = data['trade_data']
+    trade_data['account_name'] = trade_account.account_name
+    
+    # Send notification based on type
+    if notification_type == 'trade_opened':
+        result = trading_notifications.notify_new_trade(user_profile, trade_data)
+    else:  # trade_closed
+        result = trading_notifications.notify_trade_closed(user_profile, trade_data)
+    
+    if result['success']:
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification sent successfully',
+            'notification_sent': True
+        }, status=200)
+    else:
+        return JsonResponse({
+            'status': 'error',
+            'message': result.get('message', 'Failed to send notification'),
+            'error': result.get('error'),
+            'notification_sent': False
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def send_bot_status_notification(request):
+    """
+    Send LINE notification when bot status changes
+    
+    Expected JSON body:
+    {
+        "mt5_account_id": "12345678",
+        "status": "ACTIVE", "PAUSED", "DOWN", or "ERROR",
+        "reason": "Optional reason for status change"
+    }
+    
+    Returns:
+        JSON response with status and notification result
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['mt5_account_id', 'status']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid data',
+            'errors': errors
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.select_related('user__profile').get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Get user profile
+    try:
+        user_profile = trade_account.user.profile
+    except UserProfile.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'User profile not found'
+        }, status=404)
+    
+    # Check if user has connected LINE
+    if not user_profile.is_line_connected():
+        return JsonResponse({
+            'status': 'success',
+            'message': 'User has not connected LINE account, notification skipped',
+            'notification_sent': False
+        }, status=200)
+    
+    # Prepare status data
+    status_data = {
+        'account_name': trade_account.account_name,
+        'status': data['status'],
+        'reason': data.get('reason', '')
+    }
+    
+    # Send notification
+    result = trading_notifications.notify_bot_status_change(user_profile, status_data)
+    
+    if result['success']:
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification sent successfully',
+            'notification_sent': True
+        }, status=200)
+    else:
+        return JsonResponse({
+            'status': 'error',
+            'message': result.get('message', 'Failed to send notification'),
+            'error': result.get('error'),
+            'notification_sent': False
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def send_daily_summary_notification(request):
+    """
+    Send daily trading summary notification
+    
+    Expected JSON body:
+    {
+        "mt5_account_id": "12345678",
+        "summary_data": {
+            "total_trades": 5,
+            "profit_loss": 125.50,
+            "win_rate": 60.0
+        }
+    }
+    
+    Returns:
+        JSON response with status and notification result
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['mt5_account_id', 'summary_data']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid data',
+            'errors': errors
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.select_related('user__profile').get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Get user profile
+    try:
+        user_profile = trade_account.user.profile
+    except UserProfile.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'User profile not found'
+        }, status=404)
+    
+    # Check if user has connected LINE
+    if not user_profile.is_line_connected():
+        return JsonResponse({
+            'status': 'success',
+            'message': 'User has not connected LINE account, notification skipped',
+            'notification_sent': False
+        }, status=200)
+    
+    # Prepare summary data
+    summary_data = data['summary_data']
+    summary_data['account_name'] = trade_account.account_name
+    
+    # Send notification
+    result = trading_notifications.notify_daily_summary(user_profile, summary_data)
+    
+    if result['success']:
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification sent successfully',
+            'notification_sent': True
+        }, status=200)
+    else:
+        return JsonResponse({
+            'status': 'error',
+            'message': result.get('message', 'Failed to send notification'),
+            'error': result.get('error'),
+            'notification_sent': False
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+@require_bot_api_key
+def send_account_alert_notification(request):
+    """
+    Send account alert notification (e.g., low balance, high drawdown)
+    
+    Expected JSON body:
+    {
+        "mt5_account_id": "12345678",
+        "alert_type": "Low Balance",
+        "message": "Your account balance is below $100"
+    }
+    
+    Returns:
+        JSON response with status and notification result
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['mt5_account_id', 'alert_type', 'message']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid data',
+            'errors': errors
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.select_related('user__profile').get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Get user profile
+    try:
+        user_profile = trade_account.user.profile
+    except UserProfile.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'User profile not found'
+        }, status=404)
+    
+    # Check if user has connected LINE
+    if not user_profile.is_line_connected():
+        return JsonResponse({
+            'status': 'success',
+            'message': 'User has not connected LINE account, notification skipped',
+            'notification_sent': False
+        }, status=200)
+    
+    # Prepare alert data
+    alert_data = {
+        'account_name': trade_account.account_name,
+        'alert_type': data['alert_type'],
+        'message': data['message']
+    }
+    
+    # Send notification
+    result = trading_notifications.notify_account_alert(user_profile, alert_data)
+    
+    if result['success']:
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification sent successfully',
+            'notification_sent': True
+        }, status=200)
+    else:
+        return JsonResponse({
+            'status': 'error',
+            'message': result.get('message', 'Failed to send notification'),
+            'error': result.get('error'),
+            'notification_sent': False
+        }, status=500)
