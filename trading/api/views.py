@@ -606,6 +606,31 @@ def bot_heartbeat(request):
     trade_config = trade_account.trade_config or {}
     strategy_info = None
     
+    # Build risk management configuration
+    risk_config = {}
+    
+    # Add news filter if enabled
+    if trade_config.get('auto_pause_on_news'):
+        risk_config['auto_pause_on_news'] = True
+    
+    # Add drawdown protection if configured
+    if trade_config.get('daily_dd_limit'):
+        risk_config['daily_dd_limit'] = trade_config.get('daily_dd_limit')
+    
+    if trade_config.get('max_dd_limit'):
+        risk_config['max_dd_limit'] = trade_config.get('max_dd_limit')
+    
+    # Add dynamic position sizing if enabled
+    if trade_config.get('dynamic_position_sizing_enabled'):
+        risk_config['dynamic_position_sizing'] = {
+            'enabled': True,
+            'risk_percentage_per_trade': trade_config.get('risk_percentage_per_trade', 0.5)
+        }
+    else:
+        risk_config['dynamic_position_sizing'] = {
+            'enabled': False
+        }
+    
     if trade_account.active_bot:
         # Get current_parameters which should be organized by symbol
         # Format: {"EURUSD": {...params...}, "GBPUSD": {...params...}}
@@ -630,6 +655,7 @@ def bot_heartbeat(request):
         'subscription_status': trade_account.subscription_status,
         'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0,
         'trade_config': trade_config,
+        'risk_config': risk_config,
         'strategy': strategy_info,
     }, status=200)
 
