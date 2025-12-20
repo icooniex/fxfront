@@ -483,6 +483,24 @@ def account_update_bot_config(request, account_id):
             messages.error(request, 'Max Account Drawdown ไม่ถูกต้อง')
             return redirect('account_detail', account_id=account_id)
     
+    # Get dynamic position sizing settings (only if package allows)
+    dynamic_position_sizing_enabled = False
+    risk_percentage_per_trade = None
+    if package and package.allow_dynamic_position_sizing:
+        dynamic_position_sizing_enabled = request.POST.get('dynamic_position_sizing_enabled') == 'on'
+        
+        if dynamic_position_sizing_enabled:
+            try:
+                risk_value = request.POST.get('risk_percentage_per_trade', '0.5').strip()
+                if risk_value:
+                    risk_percentage_per_trade = float(risk_value)
+                    if risk_percentage_per_trade < 0.1 or risk_percentage_per_trade > 5:
+                        messages.error(request, 'Risk Percentage ต้องอยู่ระหว่าง 0.1-5%')
+                        return redirect('account_detail', account_id=account_id)
+            except (ValueError, TypeError):
+                messages.error(request, 'Risk Percentage ไม่ถูกต้อง')
+                return redirect('account_detail', account_id=account_id)
+    
     # Update trade_config
     trade_config = account.trade_config or {}
     trade_config['enabled_symbols'] = enabled_symbols
@@ -490,6 +508,8 @@ def account_update_bot_config(request, account_id):
     trade_config['auto_pause_on_news'] = auto_pause_on_news
     trade_config['daily_dd_limit'] = daily_dd_limit
     trade_config['max_dd_limit'] = max_dd_limit
+    trade_config['dynamic_position_sizing_enabled'] = dynamic_position_sizing_enabled
+    trade_config['risk_percentage_per_trade'] = risk_percentage_per_trade
     
     account.trade_config = trade_config
     account.save()

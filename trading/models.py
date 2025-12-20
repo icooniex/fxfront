@@ -121,6 +121,10 @@ class SubscriptionPackage(TimeStampedModel):
         default=False,
         help_text="Allow drawdown protection configuration"
     )
+    allow_dynamic_position_sizing = models.BooleanField(
+        default=False,
+        help_text="Allow dynamic position sizing based on risk percentage"
+    )
 
     class Meta:
         verbose_name = 'Subscription Package'

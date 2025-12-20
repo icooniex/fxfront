@@ -463,6 +463,48 @@
                     </div>
                     <div id="lotSizeWarning" class="alert alert-warning mt-2" style="display: none; padding: 8px; font-size: 0.875rem;"></div>
                     
+                    {% if account.subscription_package.allow_dynamic_position_sizing %}
+                    <div class="divider"></div>
+                    
+                    <!-- Dynamic Position Sizing -->
+                    <div class="setting-section">
+                        <div class="setting-label mb-3">📊 Dynamic Position Sizing</div>
+                        
+                        <div class="setting-item mb-3">
+                            <div>
+                                <div class="setting-label">เปิดใช้งาน Dynamic Position Sizing</div>
+                                <div class="setting-description">คำนวณ Lot Size อัตโนมัติตามความเสี่ยงที่กำหนด</div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="dynamic_position_sizing_enabled" id="dynamicPositionSizingEnabled" 
+                                    {% if account.trade_config.dynamic_position_sizing_enabled %}checked{% endif %}
+                                    onchange="toggleRiskPercentage()">
+                                <label class="form-check-label" for="dynamicPositionSizingEnabled"></label>
+                            </div>
+                        </div>
+                        
+                        <div id="riskPercentageContainer" class="setting-item {% if not account.trade_config.dynamic_position_sizing_enabled %}disabled-section{% endif %}">
+                            <div>
+                                <div class="setting-label">Risk Per Trade (%)</div>
+                                <div class="setting-description">
+                                    เปอร์เซ็นต์ความเสี่ยงต่อการเทรด คำนวณจาก Account Balance (เช่น 0.5% = เสี่ยง 0.5% ของเงินในบัญชี)
+                                    <br><span style="font-size: 0.75rem; opacity: 0.6;">แนะนำ 0.5% - 2% (สูงสุด 5%)</span>
+                                </div>
+                            </div>
+                            <input type="number" 
+                                class="form-control-glass" 
+                                style="width: 120px;"
+                                id="riskPercentage" 
+                                name="risk_percentage_per_trade" 
+                                value="{{ account.trade_config.risk_percentage_per_trade|default:'0.5' }}"
+                                min="0.1" 
+                                max="5" 
+                                step="0.1"
+                                {% if not account.trade_config.dynamic_position_sizing_enabled %}disabled{% endif %}>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% if account.subscription_package.allow_news_filter %}
                     <div class="divider"></div>
                     
@@ -487,15 +529,17 @@
                     <div class="setting-section">
                         <div class="setting-label mb-3">🛡️ Drawdown Protection</div>
                         
-                        <div class="mb-3">
-                            <label for="dailyDdLimit" class="form-label" style="font-size: 0.875rem; font-weight: 500;">
-                                Daily Drawdown Limit (%)
-                            </label>
-                            <div class="setting-description mb-2">
-                                จำกัดการขาดทุนต่อวัน คำนวณจาก Equity ณ ต้นวัน (เช่น 5% = ถ้าขาดทุน 5% ใน 1 วัน Bot จะหยุดเทรด)
+                        <div class="setting-item mb-3">
+                            <div>
+                                <div class="setting-label">Daily Drawdown Limit (%)</div>
+                                <div class="setting-description">
+                                    จำกัดการขาดทุนต่อวัน คำนวณจาก Equity ณ ต้นวัน (เช่น 5% = ถ้าขาดทุน 5% ใน 1 วัน Bot จะหยุดเทรด)
+                                    <br><span style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</span>
+                                </div>
                             </div>
                             <input type="number" 
                                 class="form-control-glass" 
+                                style="width: 120px;"
                                 id="dailyDdLimit" 
                                 name="daily_dd_limit" 
                                 value="{{ account.trade_config.daily_dd_limit|default:'' }}"
@@ -503,18 +547,19 @@
                                 min="0" 
                                 max="100" 
                                 step="0.1">
-                            <div class="form-text" style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="maxDdLimit" class="form-label" style="font-size: 0.875rem; font-weight: 500;">
-                                Max Account Drawdown (%)
-                            </label>
-                            <div class="setting-description mb-2">
-                                จำกัดการขาดทุนสูงสุดของบัญชี คำนวณจาก Initial Balance (เช่น 20% = ถ้าขาดทุนสะสม 20% Bot จะหยุดเทรด)
+                        <div class="setting-item mb-3">
+                            <div>
+                                <div class="setting-label">Max Account Drawdown (%)</div>
+                                <div class="setting-description">
+                                    จำกัดการขาดทุนสูงสุดของบัญชี คำนวณจาก Initial Balance (เช่น 20% = ถ้าขาดทุนสะสม 20% Bot จะหยุดเทรด)
+                                    <br><span style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</span>
+                                </div>
                             </div>
                             <input type="number" 
                                 class="form-control-glass" 
+                                style="width: 120px;"
                                 id="maxDdLimit" 
                                 name="max_dd_limit" 
                                 value="{{ account.trade_config.max_dd_limit|default:'' }}"
@@ -522,7 +567,6 @@
                                 min="0" 
                                 max="100" 
                                 step="0.1">
-                            <div class="form-text" style="font-size: 0.75rem; opacity: 0.6;">ใส่ 0 หรือเว้นว่างเพื่อปิดการใช้งาน</div>
                         </div>
                     </div>
                     {% endif %}
@@ -554,6 +598,35 @@
             }
         }
     };
+    
+    // Toggle Risk Percentage Input
+    function toggleRiskPercentage() {
+        const checkbox = document.getElementById('dynamicPositionSizingEnabled');
+        const input = document.getElementById('riskPercentage');
+        const container = document.getElementById('riskPercentageContainer');
+        const lotSizeInput = document.getElementById('lotSizeInput');
+        
+        if (checkbox && input && container) {
+            input.disabled = !checkbox.checked;
+            
+            // Toggle visual state
+            if (checkbox.checked) {
+                container.classList.remove('disabled-section');
+                // Disable lot size input when dynamic position sizing is enabled
+                if (lotSizeInput) {
+                    lotSizeInput.disabled = true;
+                    lotSizeInput.style.opacity = '0.5';
+                }
+            } else {
+                container.classList.add('disabled-section');
+                // Enable lot size input when dynamic position sizing is disabled
+                if (lotSizeInput) {
+                    lotSizeInput.disabled = false;
+                    lotSizeInput.style.opacity = '1';
+                }
+            }
+        }
+    }
 
     // Symbol Selection Limit Validation
     document.addEventListener('DOMContentLoaded', function() {
@@ -561,6 +634,15 @@
         const warningDiv = document.getElementById('symbolLimitWarning');
         const lotSizeInput = document.getElementById('lotSizeInput');
         const lotSizeWarning = document.getElementById('lotSizeWarning');
+        
+        // Initialize lot size input state based on dynamic position sizing
+        const dynamicPosCheckbox = document.getElementById('dynamicPositionSizingEnabled');
+        if (dynamicPosCheckbox && lotSizeInput) {
+            if (dynamicPosCheckbox.checked) {
+                lotSizeInput.disabled = true;
+                lotSizeInput.style.opacity = '0.5';
+            }
+        }
         
         if (symbolCheckboxes.length > 0) {
             const maxSymbols = parseInt(symbolCheckboxes[0].dataset.maxSymbols) || 0;
@@ -669,6 +751,25 @@
         to {
             transform: rotate(360deg);
         }
+    }
+    
+    /* Disabled section styling */
+    .disabled-section {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    
+    .disabled-section label,
+    .disabled-section .setting-description,
+    .disabled-section .form-text {
+        color: rgba(255, 255, 255, 0.4) !important;
+    }
+    
+    .disabled-section input:disabled {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: rgba(255, 255, 255, 0.3) !important;
+        cursor: not-allowed;
     }
 </style>
 {% endblock %}
