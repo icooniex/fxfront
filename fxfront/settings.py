@@ -109,11 +109,13 @@ DATABASES = {
         default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
         conn_max_age=600,  # Keep connections for 10 minutes
         conn_health_checks=True,
-        options={
-            'connect_timeout': 10,  # Connection timeout in seconds
-        } if config('DATABASE_URL', default='').startswith('postgres') else {}
     )
 }
+
+# Add connection timeout for PostgreSQL
+if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS']['connect_timeout'] = 10
 
 
 # Password validation
