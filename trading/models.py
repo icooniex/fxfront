@@ -234,6 +234,14 @@ class TradeTransaction(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name='transactions'
     )
+    bot_strategy = models.ForeignKey(
+        'BotStrategy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='trades',
+        help_text="Bot that created this trade"
+    )
     
     # MT5 order details
     mt5_order_id = models.BigIntegerField(db_index=True, help_text="MT5 Order Ticket Number")

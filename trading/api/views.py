@@ -187,6 +187,7 @@ def create_update_order(request):
         # Create new transaction
         transaction = TradeTransaction.objects.create(
             trade_account=trade_account,
+            bot_strategy=trade_account.active_bot,
             mt5_order_id=data['mt5_order_id'],
             symbol=data['symbol'],
             position_type=data['position_type'],
@@ -471,6 +472,7 @@ def batch_create_update_orders(request):
                     # Create new transaction
                     TradeTransaction.objects.create(
                         trade_account=trade_account,
+                        bot_strategy=trade_account.active_bot,
                         mt5_order_id=mt5_order_id,
                         symbol=order_data['symbol'],
                         position_type=order_data['position_type'],
