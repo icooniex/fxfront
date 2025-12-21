@@ -17,17 +17,17 @@
             <div class="row g-2">
                 <div class="col-6">
                     <select class="form-control form-control-glass form-select" id="accountFilter" style="font-size: 0.95rem; padding: 14px 16px;">
-                        <option value="">ทุกบัญชี</option>
+                        <option value="" style="font-size: 16px;">ทุกบัญชี</option>
                         {% for account in accounts %}
-                        <option value="{{ account.id }}" {% if selected_account_id == account.id|stringformat:"s" %}selected{% endif %}>{{ account.account_name }}</option>
+                        <option value="{{ account.id }}" {% if selected_account_id == account.id|stringformat:"s" %}selected{% endif %} style="font-size: 16px;">{{ account.account_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-6">
                     <select class="form-control form-control-glass form-select" id="botFilter" style="font-size: 0.95rem; padding: 14px 16px;">
-                        <option value="">ทุก Bot</option>
+                        <option value="" style="font-size: 16px;">ทุก Bot</option>
                         {% for bot in bots %}
-                        <option value="{{ bot.id }}" {% if selected_bot_id == bot.id|stringformat:"s" %}selected{% endif %}>{{ bot.name }}</option>
+                        <option value="{{ bot.id }}" {% if selected_bot_id == bot.id|stringformat:"s" %}selected{% endif %} style="font-size: 16px;">{{ bot.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
