@@ -146,6 +146,22 @@
             <img src="{{ latest_backtest.equity_curve_image.url }}" alt="Equity Curve" class="img-fluid rounded" style="max-width: 100%; height: auto;">
         </div>
         {% endif %}
+
+        <!-- Comprehensive Analysis -->
+        {% if latest_backtest.comprehensive_analysis_image %}
+        <div class="glass-card fade-in mb-3" style="padding: 20px;">
+            <h4 class="mb-3" style="font-size: 1rem; color: rgba(255, 255, 255, 0.7);">Comprehensive Analysis</h4>
+            <img src="{{ latest_backtest.comprehensive_analysis_image.url }}" alt="Comprehensive Analysis" class="img-fluid rounded" style="max-width: 100%; height: auto;">
+        </div>
+        {% endif %}
+
+        <!-- Trading Graph -->
+        {% if latest_backtest.trading_graph_image %}
+        <div class="glass-card fade-in mb-3" style="padding: 20px;">
+            <h4 class="mb-3" style="font-size: 1rem; color: rgba(255, 255, 255, 0.7);">Trading Graph</h4>
+            <img src="{{ latest_backtest.trading_graph_image.url }}" alt="Trading Graph" class="img-fluid rounded" style="max-width: 100%; height: auto;">
+        </div>
+        {% endif %}
         {% else %}
         <div class="section-header">
             <h3 class="section-title">ผล Backtest</h3>
