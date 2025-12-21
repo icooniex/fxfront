@@ -133,6 +133,7 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
     padding: 12px 16px;
     transition: all 0.3s ease;
+    font-size: 16px;
 }
 
 .form-control-glass:focus {
@@ -144,6 +145,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-control-glass::placeholder {
     color: var(--text-muted);
+}
+
+/* Force font-size for select options on mobile */
+select.form-control-glass,
+select.form-control-glass option,
+select option {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
 }
 
 .form-label {
