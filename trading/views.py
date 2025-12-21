@@ -343,14 +343,14 @@ def account_detail_view(request, account_id):
         trade_account=account,
         position_status='OPEN',
         is_active=True
-    ).order_by('-opened_at')
+    ).select_related('trade_account', 'trade_account__active_bot').order_by('-opened_at')
     
     # Get closed positions (last 50)
     closed_positions = TradeTransaction.objects.filter(
         trade_account=account,
         position_status='CLOSED',
         is_active=True
-    ).order_by('-closed_at')[:50]
+    ).select_related('trade_account', 'trade_account__active_bot').order_by('-closed_at')[:50]
     
     # Calculate statistics
     all_closed = TradeTransaction.objects.filter(
@@ -848,7 +848,7 @@ def trades_history_view(request):
         trade_account__in=user_accounts,
         position_status='CLOSED',
         is_active=True
-    )
+    ).select_related('trade_account', 'trade_account__active_bot')
     
     # Apply filters
     if account_id:
