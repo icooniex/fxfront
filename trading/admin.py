@@ -238,12 +238,13 @@ class BotStrategyAdmin(admin.ModelAdmin):
         'version',
         'status',
         'strategy_type',
+        'is_pair_trading',
         'backtest_range_days',
         'last_backtest_date',
         'is_active',
         'created_at'
     ]
-    list_filter = ['status', 'strategy_type', 'is_active', 'created_at', 'last_backtest_date']
+    list_filter = ['status', 'strategy_type', 'is_pair_trading', 'is_active', 'created_at', 'last_backtest_date']
     search_fields = ['name', 'description', 'strategy_type', 'version']
     readonly_fields = ['created_at', 'updated_at', 'last_backtest_date', 'last_optimization_date']
     filter_horizontal = ['allowed_packages']
@@ -251,10 +252,11 @@ class BotStrategyAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'status', 'version', 'strategy_type')
+            'fields': ('name', 'description', 'status', 'version', 'strategy_type', 'is_pair_trading')
         }),
         ('Configuration', {
-            'fields': ('allowed_symbols', 'allowed_packages', 'backtest_range_days')
+            'fields': ('allowed_symbols', 'allowed_packages', 'backtest_range_days'),
+            'description': 'For single trading: ["EURUSD", "GBPUSD"]. For pair trading: ["EURUSD/GBPUSD", "AUDUSD/NZDUSD"]'
         }),
         ('Optimization & Parameters', {
             'fields': ('optimization_config', 'current_parameters'),

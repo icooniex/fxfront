@@ -408,14 +408,20 @@ class BotStrategy(TimeStampedModel):
     strategy_type = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Strategy type (e.g., Trend Following, Mean Reversion, Scalping)"
+        help_text="Strategy type (e.g., Trend Following, Mean Reversion, Scalping, Correlation Divergence)"
+    )
+    
+    # Pair trading support
+    is_pair_trading = models.BooleanField(
+        default=False,
+        help_text="Whether this strategy trades symbol pairs (e.g., EURUSD/GBPUSD)"
     )
     
     # Allowed configurations
     allowed_symbols = models.JSONField(
         default=list,
         blank=True,
-        help_text="List of trading symbols this bot supports (e.g., ['XAUUSD', 'EURUSD'])"
+        help_text="List of trading symbols. For single: ['XAUUSD', 'EURUSD']. For pairs: ['EURUSD/GBPUSD', 'AUDUSD/NZDUSD']"
     )
     allowed_packages = models.ManyToManyField(
         SubscriptionPackage,
@@ -458,11 +464,52 @@ class BotStrategy(TimeStampedModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} v{self.version} ({self.get_status_display()})"
+        pair_indicator = " (Pair)" if self.is_pair_trading else ""
+        return f"{self.name} v{self.version}{pair_indicator} ({self.get_status_display()})"
     
     def get_latest_backtest(self):
         """Get the most recent backtest result"""
         return self.backtest_results.filter(is_latest=True).first()
+    
+    def validate_symbol_format(self, symbol):
+        """
+        Validate if a symbol matches the strategy type.
+        For pair trading: expects "SYMBOL1/SYMBOL2" format
+        For single trading: expects single symbol format
+        """
+        if self.is_pair_trading:
+            # Pair trading expects format like "EURUSD/GBPUSD"
+            return '/' in symbol and len(symbol.split('/')) == 2
+        else:
+            # Single symbol should not have '/'
+            return '/' not in symbol
+    
+    def parse_symbol_pair(self, symbol_pair):
+        """
+        Parse a symbol pair into its components.
+        Returns tuple (symbol1, symbol2) or (symbol, None) for single symbols.
+        """
+        if self.is_pair_trading and '/' in symbol_pair:
+            parts = symbol_pair.split('/')
+            if len(parts) == 2:
+                return parts[0].strip(), parts[1].strip()
+        return symbol_pair, None
+    
+    def get_all_unique_symbols(self):
+        """
+        Get all unique symbols from allowed_symbols.
+        For pair trading, extracts individual symbols from pairs.
+        """
+        unique_symbols = set()
+        for symbol in self.allowed_symbols:
+            if self.is_pair_trading and '/' in symbol:
+                s1, s2 = self.parse_symbol_pair(symbol)
+                unique_symbols.add(s1)
+                if s2:
+                    unique_symbols.add(s2)
+            else:
+                unique_symbols.add(symbol)
+        return list(unique_symbols)
 
 
 # Backtest Result Model

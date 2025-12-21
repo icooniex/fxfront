@@ -670,6 +670,7 @@ def bot_heartbeat(request):
     if trade_account.active_bot:
         # Get current_parameters which should be organized by symbol
         # Format: {"EURUSD": {...params...}, "GBPUSD": {...params...}}
+        # For pair trading: {"EURUSD/GBPUSD": {...params...}}
         current_parameters = trade_account.active_bot.current_parameters or {}
         
         strategy_info = {
@@ -678,6 +679,7 @@ def bot_heartbeat(request):
             'version': trade_account.active_bot.version,
             'strategy_type': trade_account.active_bot.strategy_type,
             'status': trade_account.active_bot.status,
+            'is_pair_trading': trade_account.active_bot.is_pair_trading,
             'allowed_symbols': trade_account.active_bot.allowed_symbols,
             'parameters_by_symbol': current_parameters,
         }
@@ -1052,6 +1054,7 @@ def get_bot_strategies(request):
             'status': bot.status,
             'version': bot.version,
             'strategy_type': bot.strategy_type,
+            'is_pair_trading': bot.is_pair_trading,
             'allowed_symbols': bot.allowed_symbols,
             'allowed_packages': [pkg.id for pkg in bot.allowed_packages.all()],
             'optimization_config': bot.optimization_config,
