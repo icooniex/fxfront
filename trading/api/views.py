@@ -233,6 +233,8 @@ def batch_create_update_orders(request):
     Batch create or update multiple orders in a single request.
     Much faster than calling create_update_order multiple times.
     
+    Limits: Max 500 orders per batch to prevent timeout.
+    
     Expected JSON format - Just an array of orders:
     [
         {
@@ -267,6 +269,13 @@ def batch_create_update_orders(request):
             'message': 'Orders array cannot be empty'
         }, status=400)
     
+    # Limit batch size to prevent timeout
+    if len(orders_data) > 500:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Batch size limit exceeded. Maximum 500 orders per request.'
+        }, status=400)
+    
     # Process orders
     results = {
         'created': [],
@@ -274,8 +283,38 @@ def batch_create_update_orders(request):
         'failed': []
     }
     
-    # Group orders by account for efficient processing
+    # Pre-fetch all accounts and existing orders to minimize DB queries
+    account_ids = list(set(str(order.get('mt5_account_id')) for order in orders_data if order.get('mt5_account_id')))
     accounts_cache = {}
+    
+    if account_ids:
+        accounts = UserTradeAccount.objects.filter(
+            mt5_account_id__in=account_ids,
+            is_active=True
+        ).select_related('active_bot')
+        accounts_cache = {str(acc.mt5_account_id): acc for acc in accounts}
+    
+    # Pre-fetch existing orders
+    order_ids_by_account = {}
+    for order_data in orders_data:
+        acc_id = str(order_data.get('mt5_account_id', ''))
+        if acc_id in accounts_cache:
+            if acc_id not in order_ids_by_account:
+                order_ids_by_account[acc_id] = []
+            if 'mt5_order_id' in order_data:
+                order_ids_by_account[acc_id].append(order_data['mt5_order_id'])
+    
+    existing_orders_cache = {}
+    for acc_id, order_ids in order_ids_by_account.items():
+        if order_ids:
+            account = accounts_cache[acc_id]
+            existing = TradeTransaction.objects.filter(
+                trade_account=account,
+                mt5_order_id__in=order_ids
+            )
+            for order in existing:
+                key = f"{acc_id}_{order.mt5_order_id}"
+                existing_orders_cache[key] = order
     
     for idx, order_data in enumerate(orders_data):
         try:
@@ -299,33 +338,23 @@ def batch_create_update_orders(request):
             mt5_account_id = str(order_data['mt5_account_id'])
             mt5_order_id = order_data['mt5_order_id']
             
-            # Get or cache trade account
+            # Get trade account from cache
             if mt5_account_id not in accounts_cache:
-                try:
-                    trade_account = UserTradeAccount.objects.get(
-                        mt5_account_id=mt5_account_id,
-                        is_active=True
-                    )
-                    accounts_cache[mt5_account_id] = trade_account
-                except UserTradeAccount.DoesNotExist:
-                    results['failed'].append({
-                        'index': idx,
-                        'order_id': mt5_order_id,
-                        'error': f"Trade account {mt5_account_id} not found"
-                    })
-                    continue
-            else:
-                trade_account = accounts_cache[mt5_account_id]
+                results['failed'].append({
+                    'index': idx,
+                    'order_id': mt5_order_id,
+                    'error': f"Trade account {mt5_account_id} not found"
+                })
+                continue
             
-            # Check if order exists
-            try:
-                existing_transaction = TradeTransaction.objects.get(
-                    trade_account=trade_account,
-                    mt5_order_id=mt5_order_id
-                )
-                is_update = True
-            except TradeTransaction.DoesNotExist:
-                is_update = False
+            trade_account = accounts_cache[mt5_account_id]
+            
+            # Check if order exists in cache
+            cache_key = f"{mt5_account_id}_{mt5_order_id}"
+            existing_transaction = existing_orders_cache.get(cache_key)
+            is_update = existing_transaction is not None
+            
+            if not is_update:
                 # Validate required fields for new orders
                 required_fields = ['symbol', 'position_type', 'opened_at', 'entry_price', 'lot_size']
                 missing_fields = [f for f in required_fields if f not in order_data]
@@ -477,18 +506,25 @@ def batch_create_update_orders(request):
                 'error': str(e)
             })
     
-    return JsonResponse({
+    # Limit response size - only return failed order details
+    response_data = {
         'status': 'success',
         'message': f"Processed {len(orders_data)} orders",
         'results': {
             'created': len(results['created']),
             'updated': len(results['updated']),
-            'failed': len(results['failed']),
-            'created_ids': results['created'],
-            'updated_ids': results['updated'],
-            'failed_orders': results['failed']
+            'failed': len(results['failed'])
         }
-    }, status=200)
+    }
+    
+    # Only include failed orders if there are any (and not too many)
+    if results['failed'] and len(results['failed']) <= 50:
+        response_data['results']['failed_orders'] = results['failed']
+    elif results['failed']:
+        response_data['results']['failed_count'] = len(results['failed'])
+        response_data['results']['note'] = 'Too many failures to list. Check server logs.'
+    
+    return JsonResponse(response_data, status=200)
 
 
 @require_http_methods(["GET"])

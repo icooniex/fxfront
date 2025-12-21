@@ -16,11 +16,17 @@ worker_class = 'sync'
 worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 50
+threads = 1
 
 # Timeouts - Increased to prevent SSL handshake timeouts
 timeout = 120  # Worker timeout (increased from default 30s)
 graceful_timeout = 30
 keepalive = 5  # Keep-alive connections to reduce SSL handshake overhead
+
+# Request size limits - Increase for batch operations
+limit_request_line = 8190
+limit_request_fields = 200
+limit_request_field_size = 8190
 
 # Logging
 accesslog = '-'  # Log to stdout
