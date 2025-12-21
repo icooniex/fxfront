@@ -840,7 +840,7 @@ def trades_history_view(request):
     """Complete trade history with filters"""
     # Get filter parameters
     account_id = request.GET.get('account')
-    status = request.GET.get('status')
+    bot_id = request.GET.get('bot')
     
     # Base query - all closed trades for user's accounts
     user_accounts = UserTradeAccount.objects.filter(user=request.user, is_active=True)
@@ -854,10 +854,8 @@ def trades_history_view(request):
     if account_id:
         trades = trades.filter(trade_account_id=account_id)
     
-    if status == 'profit':
-        trades = trades.filter(profit_loss__gt=0)
-    elif status == 'loss':
-        trades = trades.filter(profit_loss__lt=0)
+    if bot_id:
+        trades = trades.filter(trade_account__active_bot_id=bot_id)
     
     # Calculate statistics before slicing
     total_trades = trades.count()
@@ -878,9 +876,13 @@ def trades_history_view(request):
         else:
             trade.duration = "-"
     
+    # Get all bots for filter
+    bots = BotStrategy.objects.filter(is_active=True).order_by('name')
+    
     context = {
         'trades': trades,
         'accounts': user_accounts,
+        'bots': bots,
         'total_trades': total_trades,
         'win_rate': win_rate,
         'total_pnl': total_pnl,

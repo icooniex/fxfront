@@ -16,7 +16,7 @@
         <div class="glass-card fade-in mb-4" style="animation-delay: 0.1s;">
             <div class="row g-2">
                 <div class="col-6">
-                    <select class="form-control form-control-glass form-select" id="accountFilter">
+                    <select class="form-control form-control-glass form-select" id="accountFilter" style="font-size: 0.95rem; padding: 14px 16px;">
                         <option value="">ทุกบัญชี</option>
                         {% for account in accounts %}
                         <option value="{{ account.id }}">{{ account.account_name }}</option>
@@ -24,10 +24,11 @@
                     </select>
                 </div>
                 <div class="col-6">
-                    <select class="form-control form-control-glass form-select" id="statusFilter">
-                        <option value="">ทุกสถานะ</option>
-                        <option value="profit">กำไร</option>
-                        <option value="loss">ขาดทุน</option>
+                    <select class="form-control form-control-glass form-select" id="botFilter" style="font-size: 0.95rem; padding: 14px 16px;">
+                        <option value="">ทุก Bot</option>
+                        {% for bot in bots %}
+                        <option value="{{ bot.id }}">{{ bot.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -90,8 +91,14 @@
                         </div>
                     </div>
                     
-                    <div style="font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 4px;">
-                        {{ trade.trade_account.account_name }}
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 4px;">
+                        <span>{{ trade.trade_account.account_name }}</span>
+                        {% if trade.trade_account.active_bot %}
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <i class="bi bi-robot" style="font-size: 12px;"></i>
+                            {{ trade.trade_account.active_bot.name }}
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -127,18 +134,18 @@
         applyFilters();
     });
 
-    document.getElementById('statusFilter').addEventListener('change', function() {
+    document.getElementById('botFilter').addEventListener('change', function() {
         applyFilters();
     });
 
     function applyFilters() {
         const accountId = document.getElementById('accountFilter').value;
-        const status = document.getElementById('statusFilter').value;
+        const botId = document.getElementById('botFilter').value;
         
         // Build query string
         const params = new URLSearchParams();
         if (accountId) params.append('account', accountId);
-        if (status) params.append('status', status);
+        if (botId) params.append('bot', botId);
         
         // Reload with filters
         window.location.href = '{% url "trades_history" %}?' + params.toString();

@@ -179,6 +179,15 @@
                             <span style="margin-left: 4px; color: #ef4444; font-weight: 500;">{{ position.stop_loss|default:"—" }}</span>
                         </div>
                     </div>
+                    
+                    {% if position.trade_account.active_bot %}
+                    <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 8px;">
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <i class="bi bi-robot" style="font-size: 12px;"></i>
+                            {{ position.trade_account.active_bot.name }}
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
@@ -227,6 +236,15 @@
                             <span>{{ position.closed_at|date:"d M y H:i" }}</span>
                         </div>
                     </div>
+                    
+                    {% if position.trade_account.active_bot %}
+                    <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 4px;">
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <i class="bi bi-robot" style="font-size: 12px;"></i>
+                            {{ position.trade_account.active_bot.name }}
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
