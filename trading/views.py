@@ -989,9 +989,29 @@ def account_bot_activate_view(request, account_id):
         return redirect('account_detail', account_id=account_id)
     
     # Activate bot
+    old_bot = account.active_bot
     account.active_bot = bot
     account.bot_activated_at = timezone.now()
-    account.save(update_fields=['active_bot', 'bot_activated_at'])
+    
+    # Reset trade_config when changing bot or first time activation
+    if (old_bot and old_bot.id != bot.id) or not old_bot:
+        # Reset all bot config to defaults
+        min_lot = account.subscription_package.min_lot_size if account.subscription_package else Decimal('0.01')
+        
+        account.trade_config = {
+            'enabled_symbols': bot.allowed_symbols.copy(),
+            'lot_size': float(min_lot),
+            'auto_pause_on_news': False,
+            'daily_dd_limit': None,
+            'max_dd_limit': None,
+            'dynamic_position_sizing_enabled': False,
+            'risk_percentage_per_trade': 0.5
+        }
+        
+        if old_bot and old_bot.id != bot.id:
+            messages.info(request, 'Bot config ถูก reset ทั้งหมดตามการตั้งค่าเริ่มต้นของ Bot ใหม่')
+    
+    account.save(update_fields=['active_bot', 'bot_activated_at', 'trade_config'])
     
     messages.success(request, f'เปิดใช้งาน Bot "{bot.name}" สำเร็จ')
     return redirect('account_detail', account_id=account_id)
