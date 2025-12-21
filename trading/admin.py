@@ -288,7 +288,7 @@ class BacktestResultAdmin(admin.ModelAdmin):
     ]
     list_filter = ['is_latest', 'is_active', 'run_date', 'bot_strategy__status']
     search_fields = ['bot_strategy__name']
-    readonly_fields = ['created_at', 'updated_at', 'equity_curve_preview']
+    readonly_fields = ['created_at', 'updated_at', 'equity_curve_preview', 'comprehensive_analysis_preview', 'trading_graph_preview']
     raw_id_fields = ['bot_strategy']
     date_hierarchy = 'run_date'
     ordering = ['-run_date']
@@ -307,7 +307,11 @@ class BacktestResultAdmin(admin.ModelAdmin):
             'fields': ('max_drawdown', 'max_drawdown_percent')
         }),
         ('Visual Results', {
-            'fields': ('equity_curve_image', 'equity_curve_preview')
+            'fields': (
+                'equity_curve_image', 'equity_curve_preview',
+                'comprehensive_analysis_image', 'comprehensive_analysis_preview',
+                'trading_graph_image', 'trading_graph_preview'
+            )
         }),
         ('Additional Data', {
             'fields': ('raw_data',),
@@ -362,4 +366,24 @@ class BacktestResultAdmin(admin.ModelAdmin):
             )
         return "No equity curve image"
     equity_curve_preview.short_description = 'Equity Curve Preview'
+
+    def comprehensive_analysis_preview(self, obj):
+        if obj.comprehensive_analysis_image:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" style="max-width: 400px; max-height: 300px;"/></a>',
+                obj.comprehensive_analysis_image.url,
+                obj.comprehensive_analysis_image.url
+            )
+        return "No comprehensive analysis image"
+    comprehensive_analysis_preview.short_description = 'Comprehensive Analysis Preview'
+
+    def trading_graph_preview(self, obj):
+        if obj.trading_graph_image:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" style="max-width: 400px; max-height: 300px;"/></a>',
+                obj.trading_graph_image.url,
+                obj.trading_graph_image.url
+            )
+        return "No trading graph image"
+    trading_graph_preview.short_description = 'Trading Graph Preview'
 
