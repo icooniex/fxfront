@@ -121,7 +121,7 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <h5 class="mb-3" style="font-size: 1.1rem; font-weight: 600;">🤖 เลือก Bot</h5>
-                        <select name="bot_id" class="form-control-glass w-100" required style="width: 100%;">
+                        <select name="bot_id" class="form-control-glass w-100" required style="width: 100%; font-size: 0.95rem; padding: 14px 16px;">
                             <option value="">-- เลือก Bot --</option>
                             {% for bot in available_bots %}
                             <option value="{{ bot.id }}">{{ bot.name }} (v{{ bot.version }})</option>
@@ -290,7 +290,7 @@
                     <div class="mb-3">
                         <label class="setting-label mb-2">เลือก Bot ใหม่</label>
                         <div class="setting-description mb-3">Bot ปัจจุบันจะถูกปิดการใช้งานและเปลี่ยนเป็น Bot ที่เลือกใหม่</div>
-                        <select name="bot_id" class="form-control-glass" required>
+                        <select name="bot_id" class="form-control-glass" required style="font-size: 0.95rem; padding: 14px 16px;">
                             <option value="">-- เลือก Bot --</option>
                             {% for bot in available_bots %}
                             <option value="{{ bot.id }}" {% if account.active_bot and bot.id == account.active_bot.id %}selected{% endif %}>
