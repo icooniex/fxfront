@@ -150,9 +150,18 @@ h1, h2, h3, h4, h5, h6 {
 /* Force font-size for select options on mobile */
 select.form-control-glass,
 select.form-control-glass option,
+select.form-select option,
 select option {
     font-size: 16px !important;
     -webkit-text-size-adjust: 100%;
+}
+
+/* Mobile specific - force larger text in select dropdowns */
+@media (max-width: 768px) {
+    select, select option, select.form-control-glass, select.form-select {
+        font-size: 16px !important;
+        -webkit-text-size-adjust: none;
+    }
 }
 
 .form-label {
