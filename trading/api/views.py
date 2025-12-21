@@ -1081,7 +1081,7 @@ def get_bot_strategies(request):
 def submit_backtest_result(request):
     """
     Submit backtest result from external backtest system.
-    Accepts JSON data with metrics and optional equity curve image as multipart/form-data.
+    Accepts JSON data with metrics and optional images as multipart/form-data.
     
     Expected data:
     - bot_strategy_id (required)
@@ -1093,6 +1093,8 @@ def submit_backtest_result(request):
     - max_drawdown, max_drawdown_percent
     - raw_data (optional, JSON object)
     - equity_curve_image (optional, file upload)
+    - comprehensive_analysis_image (optional, file upload)
+    - trading_graph_image (optional, file upload)
     - set_as_latest (optional, boolean, default True)
     """
     try:
@@ -1100,9 +1102,13 @@ def submit_backtest_result(request):
         if request.content_type and 'multipart/form-data' in request.content_type:
             data = request.POST.dict()
             equity_curve_image = request.FILES.get('equity_curve_image')
+            comprehensive_analysis_image = request.FILES.get('comprehensive_analysis_image')
+            trading_graph_image = request.FILES.get('trading_graph_image')
         else:
             data = json.loads(request.body)
             equity_curve_image = None
+            comprehensive_analysis_image = None
+            trading_graph_image = None
     except (json.JSONDecodeError, Exception) as e:
         return JsonResponse({
             'status': 'error',
@@ -1211,7 +1217,9 @@ def submit_backtest_result(request):
             max_drawdown_percent=max_drawdown_percent,
             raw_data=raw_data,
             is_latest=set_as_latest,
-            equity_curve_image=equity_curve_image
+            equity_curve_image=equity_curve_image,
+            comprehensive_analysis_image=comprehensive_analysis_image,
+            trading_graph_image=trading_graph_image
         )
         
         # Update bot strategy's last_backtest_date
