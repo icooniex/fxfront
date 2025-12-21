@@ -37,6 +37,23 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv()
 )
 
+# Security settings for production with SSL/TLS
+if not DEBUG:
+    # Trust the X-Forwarded-Proto header from Railway/proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Use secure cookies in production
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    
+    # HSTS settings
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # SSL redirect
+    SECURE_SSL_REDIRECT = False  # Railway handles this at proxy level
+
 
 # Application definition
 
@@ -90,8 +107,11 @@ WSGI_APPLICATION = 'fxfront.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
-        conn_max_age=600,
+        conn_max_age=600,  # Keep connections for 10 minutes
         conn_health_checks=True,
+        options={
+            'connect_timeout': 10,  # Connection timeout in seconds
+        } if config('DATABASE_URL', default='').startswith('postgres') else {}
     )
 }
 
