@@ -410,6 +410,11 @@ class BotStrategy(TimeStampedModel):
         blank=True,
         help_text="Strategy type (e.g., Trend Following, Mean Reversion, Scalping, Correlation Divergence)"
     )
+    bot_strategy_class = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Bot strategy class name (e.g., TrendFollowingBot, CorrelationDivergenceBot)"
+    )
     
     # Pair trading support
     is_pair_trading = models.BooleanField(
