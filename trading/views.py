@@ -855,7 +855,7 @@ def trades_history_view(request):
         trades = trades.filter(trade_account_id=account_id)
     
     if bot_id:
-        trades = trades.filter(trade_account__active_bot_id=bot_id)
+        trades = trades.filter(bot_strategy_id=bot_id)
     
     # Calculate statistics before slicing
     total_trades = trades.count()
@@ -883,6 +883,8 @@ def trades_history_view(request):
         'trades': trades,
         'accounts': user_accounts,
         'bots': bots,
+        'selected_account_id': account_id,
+        'selected_bot_id': bot_id,
         'total_trades': total_trades,
         'win_rate': win_rate,
         'total_pnl': total_pnl,
