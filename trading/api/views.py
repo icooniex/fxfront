@@ -14,7 +14,45 @@ from trading.models import (
 )
 from .authentication import require_bot_api_key
 import json
+import logging
 from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
+
+
+def get_bot_strategy_from_comment(comment, trade_account):
+    """
+    Parse comment field to extract bot strategy name and find the BotStrategy instance.
+    Comment format: StrategyName_Symbol (e.g., MeanReversion_EURUSD)
+    
+    Returns:
+        BotStrategy instance or None if not found
+    """
+    if not comment:
+        return trade_account.active_bot
+    
+    try:
+        # Split by underscore and take the first part as strategy name
+        strategy_name = comment.split('_')[0]
+        
+        if not strategy_name:
+            return trade_account.active_bot
+        
+        # Try to find BotStrategy by matching the strategy class name
+        bot_strategy = BotStrategy.objects.filter(
+            bot_strategy_class__icontains=strategy_name,
+            is_active=True
+        ).first()
+        
+        if bot_strategy:
+            return bot_strategy
+        
+        # Fallback to active_bot if no match found
+        return trade_account.active_bot
+        
+    except Exception as e:
+        logger.warning(f"Error parsing comment '{comment}': {e}")
+        return trade_account.active_bot
 
 
 @require_http_methods(["POST"])
@@ -184,10 +222,13 @@ def create_update_order(request):
         transaction.save()
         created = False
     else:
+        # Get bot strategy from comment field
+        bot_strategy = get_bot_strategy_from_comment(data.get('comment'), trade_account)
+        
         # Create new transaction
         transaction = TradeTransaction.objects.create(
             trade_account=trade_account,
-            bot_strategy=trade_account.active_bot,
+            bot_strategy=bot_strategy,
             mt5_order_id=data['mt5_order_id'],
             symbol=data['symbol'],
             position_type=data['position_type'],
@@ -469,10 +510,13 @@ def batch_create_update_orders(request):
                     trans.save()
                     results['updated'].append(mt5_order_id)
                 else:
+                    # Get bot strategy from comment field
+                    bot_strategy = get_bot_strategy_from_comment(order_data.get('comment'), trade_account)
+                    
                     # Create new transaction
                     TradeTransaction.objects.create(
                         trade_account=trade_account,
-                        bot_strategy=trade_account.active_bot,
+                        bot_strategy=bot_strategy,
                         mt5_order_id=mt5_order_id,
                         symbol=order_data['symbol'],
                         position_type=order_data['position_type'],
