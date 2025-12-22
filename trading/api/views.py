@@ -22,33 +22,35 @@ logger = logging.getLogger(__name__)
 
 def get_bot_strategy_from_comment(comment, trade_account):
     """
-    Parse comment field to extract bot strategy name and find the BotStrategy instance.
-    Comment format: StrategyName_Symbol (e.g., MeanReversion_EURUSD)
+    Parse comment field to extract bot strategy ID and find the BotStrategy instance.
+    Comment format: ID_StrategyName_Symbol (e.g., 5_MeanReversion_EURUSD)
     
     Returns:
-        BotStrategy instance or None if not found
+        BotStrategy instance or falls back to active_bot if not found
     """
     if not comment:
         return trade_account.active_bot
     
     try:
-        # Split by underscore and take the first part as strategy name
-        strategy_name = comment.split('_')[0]
-        
-        if not strategy_name:
+        # Split by underscore and take the first part as bot_strategy_id
+        parts = comment.split('_')
+        if not parts or len(parts) < 1:
             return trade_account.active_bot
         
-        # Try to find BotStrategy by matching the strategy class name
-        bot_strategy = BotStrategy.objects.filter(
-            bot_strategy_class__icontains=strategy_name,
-            is_active=True
-        ).first()
+        bot_strategy_id = parts[0]
         
-        if bot_strategy:
+        # Try to convert to integer and find BotStrategy by ID
+        try:
+            bot_strategy_id = int(bot_strategy_id)
+            bot_strategy = BotStrategy.objects.get(
+                id=bot_strategy_id,
+                is_active=True
+            )
             return bot_strategy
-        
-        # Fallback to active_bot if no match found
-        return trade_account.active_bot
+        except (ValueError, BotStrategy.DoesNotExist):
+            # If ID is invalid or bot not found, fallback to active_bot
+            logger.warning(f"Bot strategy ID '{bot_strategy_id}' from comment '{comment}' not found")
+            return trade_account.active_bot
         
     except Exception as e:
         logger.warning(f"Error parsing comment '{comment}': {e}")
