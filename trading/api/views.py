@@ -30,14 +30,14 @@ def get_bot_strategy_from_comment(comment, trade_account):
         BotStrategy instance or falls back to active_bot if not found
     """
     if not comment:
-        print(f"[BOT_STRATEGY] No comment provided, using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}", file=sys.stderr)
+        logger.error(f"[BOT_STRATEGY] No comment provided, using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
         return trade_account.active_bot
     
     try:
         # Split by underscore and take the first part as bot_strategy_id
         parts = comment.split('_')
         if not parts or len(parts) < 1:
-            print(f"[BOT_STRATEGY] Invalid comment format, using active_bot", file=sys.stderr)
+            logger.error(f"[BOT_STRATEGY] Invalid comment format, using active_bot")
             return trade_account.active_bot
         
         bot_strategy_id_str = parts[0].strip()
@@ -49,15 +49,15 @@ def get_bot_strategy_from_comment(comment, trade_account):
                 id=bot_strategy_id,
                 is_active=True
             )
-            print(f"[BOT_STRATEGY] ✓ Found ID {bot_strategy_id} from comment '{comment}' -> {bot_strategy.name}", file=sys.stderr)
+            logger.error(f"[BOT_STRATEGY] ✓ Found ID {bot_strategy_id} from comment '{comment}' -> {bot_strategy.name}")
             return bot_strategy
         except (ValueError, BotStrategy.DoesNotExist) as e:
             # If ID is invalid or bot not found, fallback to active_bot
-            print(f"[BOT_STRATEGY] ✗ ID '{bot_strategy_id_str}' from comment '{comment}' not found ({type(e).__name__}). Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}", file=sys.stderr)
+            logger.error(f"[BOT_STRATEGY] ✗ ID '{bot_strategy_id_str}' from comment '{comment}' not found ({type(e).__name__}). Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
             return trade_account.active_bot
         
     except Exception as e:
-        print(f"[BOT_STRATEGY] ✗ Error parsing comment '{comment}': {e}", file=sys.stderr)
+        logger.error(f"[BOT_STRATEGY] ✗ Error parsing comment '{comment}': {e}")
         return trade_account.active_bot
 
 
