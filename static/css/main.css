@@ -196,7 +196,7 @@ select option {
 }
 
 /* Default badge if no variant class */
-.badge-glass:not(.badge-active):not(.badge-paused):not(.badge-warning):not(.badge-down):not(.badge-primary-blue) {
+.badge-glass:not(.badge-active):not(.badge-paused):not(.badge-warning):not(.badge-down):not(.badge-danger):not(.badge-primary-blue) {
     background: var(--bg-glass);
     color: var(--text-primary);
 }
@@ -223,6 +223,19 @@ select option {
     background: rgba(255, 68, 68, 0.15) !important;
     border-color: var(--loss-red) !important;
     color: var(--loss-red) !important;
+}
+
+.badge-danger {
+    background: rgba(255, 68, 68, 0.2) !important;
+    border-color: #ff4444 !important;
+    color: #ff4444 !important;
+    font-weight: 600 !important;
+    animation: pulse-danger 2s ease-in-out infinite;
+}
+
+@keyframes pulse-danger {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 .badge-primary-blue {

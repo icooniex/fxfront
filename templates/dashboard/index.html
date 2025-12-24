@@ -76,6 +76,26 @@
                             </span>
                         </div>
                     </div>
+                    {% if account.dd_blocked %}
+                    <div class="mt-2" style="background: rgba(255, 68, 68, 0.15); border: 1px solid #ff4444; border-radius: 8px; padding: 8px 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">🛑</span>
+                            <div style="flex: 1;">
+                                <div style="font-size: 11px; font-weight: 600; color: #ff4444; margin-bottom: 2px;">DD Protection Active</div>
+                                <div style="font-size: 10px; color: #ff4444; opacity: 0.9;">
+                                    {% if account.dd_block_reason == 'DAILY_DD_LIMIT' %}
+                                        Bot หยุดเนื่องจากขาดทุนเกิน Daily DD Limit
+                                    {% elif account.dd_block_reason == 'MAX_ACCOUNT_DD' %}
+                                        Bot หยุดเนื่องจากขาดทุนเกิน Max Account DD
+                                    {% else %}
+                                        Bot ถูกหยุดโดย DD Protection
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 {% endfor %}

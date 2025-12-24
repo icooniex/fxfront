@@ -33,10 +33,30 @@
                         <h2 class="mb-1">{{ account.account_name }}</h2>
                         <p class="text-secondary mb-0">{{ account.broker_name }} • {{ account.mt5_account_id }}</p>
                     </div>
-                    <span class="badge-glass {% if account.bot_status == 'ACTIVE' %}badge-active{% elif account.bot_status == 'PAUSED' %}badge-paused{% else %}badge-down{% endif %}">
-                        {{ account.get_bot_status_display }}
+                    <span class="badge-glass {% if account.subscription_status == 'ACTIVE' %}badge-active{% elif account.subscription_status == 'PENDING' %}badge-warning{% else %}badge-down{% endif %}">
+                        {{ account.get_subscription_status_display }}
                     </span>
                 </div>
+                
+                {% if account.dd_blocked %}
+                <div class="mt-3" style="background: rgba(255, 68, 68, 0.15); border: 1px solid #ff4444; border-radius: 12px; padding: 12px 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">🛑</span>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 600; color: #ff4444; margin-bottom: 4px;">DD Protection Active</div>
+                            <div style="font-size: 12px; color: #ff4444; opacity: 0.9;">
+                                {% if account.dd_block_reason == 'DAILY_DD_LIMIT' %}
+                                    Bot หยุดเนื่องจากขาดทุนเกิน Daily DD Limit
+                                {% elif account.dd_block_reason == 'MAX_ACCOUNT_DD' %}
+                                    Bot หยุดเนื่องจากขาดทุนเกิน Max Account DD
+                                {% else %}
+                                    Bot ถูกหยุดโดย DD Protection
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 
                 <div class="account-balance">
                     ฿{{ account.current_balance|floatformat:2 }}

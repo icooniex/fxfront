@@ -34,6 +34,7 @@ class AccountLiveUpdate {
                 
                 // Update full UI
                 this.updateBalance(result.data.account.balance);
+                this.updateBotStatus(result.data.account);
                 this.updateStats(result.data.stats);
                 this.rebuildOpenPositions(result.data.open_positions);
                 this.rebuildTradeHistory(result.data.closed_positions);
@@ -103,6 +104,32 @@ class AccountLiveUpdate {
         if (elem) {
             elem.textContent = `฿${balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
+    }
+
+    updateBotStatus(account) {
+        // Update all status badges on the page
+        const statusBadges = document.querySelectorAll('.badge-glass[class*="badge-active"], .badge-glass[class*="badge-paused"], .badge-glass[class*="badge-down"], .badge-glass[class*="badge-danger"]');
+        
+        statusBadges.forEach(badge => {
+            if (account.dd_blocked) {
+                // Show DD Block status
+                badge.className = 'badge-glass badge-danger';
+                badge.style.fontSize = badge.style.fontSize || '0.75rem';
+                badge.innerHTML = `🛑 DD Block: ${account.dd_block_reason_display}`;
+            } else {
+                // Show normal bot status
+                let badgeClass = 'badge-glass ';
+                if (account.bot_status === 'ACTIVE') {
+                    badgeClass += 'badge-active';
+                } else if (account.bot_status === 'PAUSED') {
+                    badgeClass += 'badge-paused';
+                } else {
+                    badgeClass += 'badge-down';
+                }
+                badge.className = badgeClass;
+                badge.textContent = account.bot_status_display;
+            }
+        });
     }
 
     updateTotalPnL(totalPnl) {
