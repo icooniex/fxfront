@@ -200,6 +200,8 @@ def create_update_order(request):
             transaction.closed_at = closed_at
         if data.get('close_reason'):
             transaction.close_reason = data['close_reason']
+        if data.get('comment'):
+            transaction.comment = data['comment']
         
         # Update decimal fields if provided
         if 'exit_price' in decimal_fields:
@@ -501,6 +503,8 @@ def batch_create_update_orders(request):
                         trans.closed_at = closed_at
                     if order_data.get('close_reason'):
                         trans.close_reason = order_data['close_reason']
+                    if order_data.get('comment'):
+                        trans.comment = order_data['comment']
                     
                     # Update decimal fields if provided
                     for field, value in decimal_fields.items():
