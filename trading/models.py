@@ -328,6 +328,14 @@ class TradeTransaction(TimeStampedModel):
         default=Decimal('0.0000')
     )
     
+    # Comment field from MT5
+    comment = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Comment field from MT5 trade (e.g., '5_MeanReversion_EURUSD')"
+    )
+    
     # Account balance at close
     account_balance_at_close = models.DecimalField(
         max_digits=19,

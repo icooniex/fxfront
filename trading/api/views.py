@@ -29,53 +29,27 @@ def get_bot_strategy_from_comment(comment, trade_account):
     Returns:
         BotStrategy instance or falls back to active_bot if not found
     """
-    print(f"[BOT_STRATEGY DEBUG] Called with comment='{comment}', account={trade_account.mt5_account_id}", flush=True)
-    
     if not comment:
-        print(f"[BOT_STRATEGY] No comment, using active_bot ID: {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
         return trade_account.active_bot
     
     try:
-        # Split by underscore and take the first part as bot_strategy_id
         parts = comment.split('_')
-        print(f"[BOT_STRATEGY DEBUG] Split parts: {parts}", flush=True)
-        
         if not parts or len(parts) < 1:
-            print(f"[BOT_STRATEGY] Invalid format, using active_bot", flush=True)
             return trade_account.active_bot
         
         bot_strategy_id_str = parts[0].strip()
-        print(f"[BOT_STRATEGY DEBUG] Extracted ID: '{bot_strategy_id_str}'", flush=True)
         
-        # Try to convert to integer and find BotStrategy by ID
         try:
             bot_strategy_id = int(bot_strategy_id_str)
-            print(f"[BOT_STRATEGY DEBUG] Converted to int: {bot_strategy_id}", flush=True)
-            
-            # Check all matching strategies
-            all_strat = BotStrategy.objects.filter(id=bot_strategy_id)
-            print(f"[BOT_STRATEGY DEBUG] Found {all_strat.count()} strategies with ID {bot_strategy_id}", flush=True)
-            if all_strat.exists():
-                s = all_strat.first()
-                print(f"[BOT_STRATEGY DEBUG] Strategy: {s.name}, is_active={s.is_active}", flush=True)
-            
             bot_strategy = BotStrategy.objects.get(
                 id=bot_strategy_id,
                 is_active=True
             )
-            print(f"[BOT_STRATEGY] ✓ SUCCESS! Using bot_strategy ID {bot_strategy_id} ({bot_strategy.name})", flush=True)
             return bot_strategy
-            
-        except ValueError as e:
-            print(f"[BOT_STRATEGY] ✗ ValueError: '{bot_strategy_id_str}' not int. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
-            return trade_account.active_bot
-            
-        except BotStrategy.DoesNotExist:
-            print(f"[BOT_STRATEGY] ✗ DoesNotExist: ID {bot_strategy_id} not found or inactive. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
+        except (ValueError, BotStrategy.DoesNotExist):
             return trade_account.active_bot
         
-    except Exception as e:
-        print(f"[BOT_STRATEGY] ✗ Exception: {type(e).__name__}: {e}. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
+    except Exception:
         return trade_account.active_bot
 
 
@@ -268,7 +242,8 @@ def create_update_order(request):
             profit_loss=decimal_fields.get('profit_loss', Decimal('0.0000')),
             commission=decimal_fields.get('commission', Decimal('0.0000')),
             swap_fee=decimal_fields.get('swap_fee', Decimal('0.0000')),
-            account_balance_at_close=decimal_fields.get('account_balance_at_close')
+            account_balance_at_close=decimal_fields.get('account_balance_at_close'),
+            comment=data.get('comment')
         )
         created = True
     
@@ -556,7 +531,8 @@ def batch_create_update_orders(request):
                         profit_loss=decimal_fields.get('profit_loss', Decimal('0.0000')),
                         commission=decimal_fields.get('commission', Decimal('0.0000')),
                         swap_fee=decimal_fields.get('swap_fee', Decimal('0.0000')),
-                        account_balance_at_close=decimal_fields.get('account_balance_at_close')
+                        account_balance_at_close=decimal_fields.get('account_balance_at_close'),
+                        comment=order_data.get('comment')
                     )
                     results['created'].append(mt5_order_id)
                 
