@@ -46,15 +46,15 @@ def get_bot_strategy_from_comment(comment, trade_account):
                 id=bot_strategy_id,
                 is_active=True
             )
-            logger.info(f"✓ Found bot strategy ID {bot_strategy_id} from comment '{comment}': {bot_strategy.name}")
+            print(f"✓ Bot Strategy: Found ID {bot_strategy_id} from comment '{comment}' -> {bot_strategy.name}")
             return bot_strategy
         except (ValueError, BotStrategy.DoesNotExist) as e:
             # If ID is invalid or bot not found, fallback to active_bot
-            logger.warning(f"✗ Bot strategy ID '{bot_strategy_id_str}' from comment '{comment}' not found or invalid: {type(e).__name__}. Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
+            print(f"✗ Bot Strategy: ID '{bot_strategy_id_str}' from comment '{comment}' not found ({type(e).__name__}). Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
             return trade_account.active_bot
         
     except Exception as e:
-        logger.warning(f"Error parsing comment '{comment}': {e}")
+        print(f"✗ Bot Strategy: Error parsing comment '{comment}': {e}")
         return trade_account.active_bot
 
 
