@@ -59,6 +59,11 @@ class BotStrategyStatus(models.TextChoices):
     BETA = 'BETA', 'Beta'
 
 
+class DDBlockReason(models.TextChoices):
+    DAILY_DD_LIMIT = 'DAILY_DD_LIMIT', 'Daily DD Limit Reached'
+    MAX_ACCOUNT_DD = 'MAX_ACCOUNT_DD', 'Max Account DD Reached'
+
+
 # User Profile Model
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -216,6 +221,25 @@ class UserTradeAccount(TimeStampedModel):
         decimal_places=4,
         default=Decimal('0.0000'),
         help_text="Peak account balance"
+    )
+    
+    # Drawdown protection status
+    dd_blocked = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether bot is blocked due to drawdown protection"
+    )
+    dd_block_reason = models.CharField(
+        max_length=20,
+        choices=DDBlockReason.choices,
+        null=True,
+        blank=True,
+        help_text="Reason for DD block"
+    )
+    dd_blocked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the bot was blocked by DD protection"
     )
 
     class Meta:

@@ -65,6 +65,10 @@ class UserTradeAccountAdmin(admin.ModelAdmin):
         ('Bot Configuration', {
             'fields': ('bot_status', 'active_bot', 'bot_activated_at', 'trade_config')
         }),
+        ('Drawdown Protection', {
+            'fields': ('dd_blocked', 'dd_block_reason', 'dd_blocked_at'),
+            'classes': ('collapse',)
+        }),
         ('System Information', {
             'fields': ('is_active', 'last_sync_datetime', 'created_at', 'updated_at'),
             'classes': ('collapse',)

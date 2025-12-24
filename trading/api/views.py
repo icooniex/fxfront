@@ -680,9 +680,31 @@ def bot_heartbeat(request):
                 'message': 'Invalid current_balance format'
             }, status=400)
     
+    # Update DD block status if provided
+    update_fields = ['bot_status', 'current_balance', 'peak_balance', 'last_sync_datetime']
+    
+    if 'dd_blocked' in data:
+        dd_blocked = data['dd_blocked']
+        if isinstance(dd_blocked, bool):
+            trade_account.dd_blocked = dd_blocked
+            update_fields.append('dd_blocked')
+            
+            # If blocked, update reason and timestamp
+            if dd_blocked and 'dd_block_reason' in data:
+                dd_reason = data['dd_block_reason']
+                if dd_reason in ['DAILY_DD_LIMIT', 'MAX_ACCOUNT_DD']:
+                    trade_account.dd_block_reason = dd_reason
+                    trade_account.dd_blocked_at = timezone.now()
+                    update_fields.extend(['dd_block_reason', 'dd_blocked_at'])
+            # If unblocked, clear reason and timestamp
+            elif not dd_blocked:
+                trade_account.dd_block_reason = None
+                trade_account.dd_blocked_at = None
+                update_fields.extend(['dd_block_reason', 'dd_blocked_at'])
+    
     # Update last sync time
     trade_account.last_sync_datetime = timezone.now()
-    trade_account.save(update_fields=['bot_status', 'current_balance', 'peak_balance', 'last_sync_datetime'])
+    trade_account.save(update_fields=update_fields)
     
     # Check if bot should continue (subscription active)
     should_continue = (
@@ -748,6 +770,9 @@ def bot_heartbeat(request):
         'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0,
         'current_balance': str(trade_account.current_balance),
         'peak_balance': str(trade_account.peak_balance),
+        'dd_blocked': trade_account.dd_blocked,
+        'dd_block_reason': trade_account.dd_block_reason,
+        'dd_blocked_at': trade_account.dd_blocked_at.isoformat() if trade_account.dd_blocked_at else None,
         'trade_config': trade_config,
         'risk_config': risk_config,
         'strategy': strategy_info,
@@ -847,6 +872,10 @@ def get_account_live_data(request, account_id):
                 'balance': float(account.current_balance),
                 'bot_status': account.bot_status,
                 'bot_status_display': account.get_bot_status_display(),
+                'dd_blocked': account.dd_blocked,
+                'dd_block_reason': account.dd_block_reason,
+                'dd_block_reason_display': account.get_dd_block_reason_display() if account.dd_block_reason else None,
+                'dd_blocked_at': account.dd_blocked_at.isoformat() if account.dd_blocked_at else None,
             },
             'stats': {
                 'total_pnl': float(total_pnl),
@@ -911,6 +940,10 @@ def get_dashboard_live_data(request):
             'balance': float(account.current_balance),
             'bot_status': account.bot_status,
             'bot_status_display': account.get_bot_status_display(),
+            'dd_blocked': account.dd_blocked,
+            'dd_block_reason': account.dd_block_reason,
+            'dd_block_reason_display': account.get_dd_block_reason_display() if account.dd_block_reason else None,
+            'dd_blocked_at': account.dd_blocked_at.isoformat() if account.dd_blocked_at else None,
             'open_positions_count': open_count,
             'current_pnl': float(current_pnl),
             'total_pnl': float(total_pnl),
