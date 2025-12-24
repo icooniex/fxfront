@@ -655,15 +655,14 @@ def bot_heartbeat(request):
         }, status=404)
     
     # Update bot status if provided
-    # Skip bot status update for now
-    # if 'bot_status' in data:
-    #     if data['bot_status'] in ['ACTIVE', 'PAUSED', 'DOWN']:
-    #         trade_account.bot_status = data['bot_status']
-    #     else:
-    #         return JsonResponse({
-    #             'status': 'error',
-    #             'message': 'Invalid bot_status. Must be ACTIVE, PAUSED, or DOWN'
-    #         }, status=400)
+    if 'bot_status' in data and data['bot_status'] is not None:
+        if data['bot_status'] in ['ACTIVE', 'PAUSED', 'DOWN']:
+            trade_account.bot_status = data['bot_status']
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid bot_status. Must be ACTIVE, PAUSED, or DOWN'
+            }, status=400)
     
     # Update balance if provided
     if 'current_balance' in data:
