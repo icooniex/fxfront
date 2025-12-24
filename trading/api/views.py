@@ -29,35 +29,53 @@ def get_bot_strategy_from_comment(comment, trade_account):
     Returns:
         BotStrategy instance or falls back to active_bot if not found
     """
+    print(f"[BOT_STRATEGY DEBUG] Called with comment='{comment}', account={trade_account.mt5_account_id}", flush=True)
+    
     if not comment:
-        logger.error(f"[BOT_STRATEGY] No comment provided, using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
+        print(f"[BOT_STRATEGY] No comment, using active_bot ID: {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
         return trade_account.active_bot
     
     try:
         # Split by underscore and take the first part as bot_strategy_id
         parts = comment.split('_')
+        print(f"[BOT_STRATEGY DEBUG] Split parts: {parts}", flush=True)
+        
         if not parts or len(parts) < 1:
-            logger.error(f"[BOT_STRATEGY] Invalid comment format, using active_bot")
+            print(f"[BOT_STRATEGY] Invalid format, using active_bot", flush=True)
             return trade_account.active_bot
         
         bot_strategy_id_str = parts[0].strip()
+        print(f"[BOT_STRATEGY DEBUG] Extracted ID: '{bot_strategy_id_str}'", flush=True)
         
         # Try to convert to integer and find BotStrategy by ID
         try:
             bot_strategy_id = int(bot_strategy_id_str)
+            print(f"[BOT_STRATEGY DEBUG] Converted to int: {bot_strategy_id}", flush=True)
+            
+            # Check all matching strategies
+            all_strat = BotStrategy.objects.filter(id=bot_strategy_id)
+            print(f"[BOT_STRATEGY DEBUG] Found {all_strat.count()} strategies with ID {bot_strategy_id}", flush=True)
+            if all_strat.exists():
+                s = all_strat.first()
+                print(f"[BOT_STRATEGY DEBUG] Strategy: {s.name}, is_active={s.is_active}", flush=True)
+            
             bot_strategy = BotStrategy.objects.get(
                 id=bot_strategy_id,
                 is_active=True
             )
-            logger.error(f"[BOT_STRATEGY] ✓ Found ID {bot_strategy_id} from comment '{comment}' -> {bot_strategy.name}")
+            print(f"[BOT_STRATEGY] ✓ SUCCESS! Using bot_strategy ID {bot_strategy_id} ({bot_strategy.name})", flush=True)
             return bot_strategy
-        except (ValueError, BotStrategy.DoesNotExist) as e:
-            # If ID is invalid or bot not found, fallback to active_bot
-            logger.error(f"[BOT_STRATEGY] ✗ ID '{bot_strategy_id_str}' from comment '{comment}' not found ({type(e).__name__}). Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
+            
+        except ValueError as e:
+            print(f"[BOT_STRATEGY] ✗ ValueError: '{bot_strategy_id_str}' not int. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
+            return trade_account.active_bot
+            
+        except BotStrategy.DoesNotExist:
+            print(f"[BOT_STRATEGY] ✗ DoesNotExist: ID {bot_strategy_id} not found or inactive. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
             return trade_account.active_bot
         
     except Exception as e:
-        logger.error(f"[BOT_STRATEGY] ✗ Error parsing comment '{comment}': {e}")
+        print(f"[BOT_STRATEGY] ✗ Exception: {type(e).__name__}: {e}. Using active_bot ID {trade_account.active_bot.id if trade_account.active_bot else None}", flush=True)
         return trade_account.active_bot
 
 
