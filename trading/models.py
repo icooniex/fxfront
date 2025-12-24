@@ -211,6 +211,12 @@ class UserTradeAccount(TimeStampedModel):
         default=Decimal('0.0000'),
         help_text="Current account balance"
     )
+    peak_balance = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="Peak account balance"
+    )
 
     class Meta:
         verbose_name = 'User Trade Account'

@@ -668,7 +668,13 @@ def bot_heartbeat(request):
     # Update balance if provided
     if 'current_balance' in data:
         try:
-            trade_account.current_balance = Decimal(str(data['current_balance']))
+            new_balance = Decimal(str(data['current_balance']))
+            trade_account.current_balance = new_balance
+            
+            # Update peak balance if current balance exceeds it
+            if new_balance > trade_account.peak_balance:
+                trade_account.peak_balance = new_balance
+                
         except (ValueError, InvalidOperation):
             return JsonResponse({
                 'status': 'error',
@@ -677,7 +683,7 @@ def bot_heartbeat(request):
     
     # Update last sync time
     trade_account.last_sync_datetime = timezone.now()
-    trade_account.save(update_fields=['bot_status', 'current_balance', 'last_sync_datetime'])
+    trade_account.save(update_fields=['bot_status', 'current_balance', 'peak_balance', 'last_sync_datetime'])
     
     # Check if bot should continue (subscription active)
     should_continue = (
@@ -741,6 +747,8 @@ def bot_heartbeat(request):
         'bot_status': trade_account.bot_status,
         'subscription_status': trade_account.subscription_status,
         'days_remaining': (trade_account.subscription_expiry - timezone.now()).days if trade_account.subscription_expiry else 0,
+        'current_balance': str(trade_account.current_balance),
+        'peak_balance': str(trade_account.peak_balance),
         'trade_config': trade_config,
         'risk_config': risk_config,
         'strategy': strategy_info,
