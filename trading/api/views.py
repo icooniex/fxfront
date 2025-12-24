@@ -37,19 +37,20 @@ def get_bot_strategy_from_comment(comment, trade_account):
         if not parts or len(parts) < 1:
             return trade_account.active_bot
         
-        bot_strategy_id = parts[0]
+        bot_strategy_id_str = parts[0].strip()
         
         # Try to convert to integer and find BotStrategy by ID
         try:
-            bot_strategy_id = int(bot_strategy_id)
+            bot_strategy_id = int(bot_strategy_id_str)
             bot_strategy = BotStrategy.objects.get(
                 id=bot_strategy_id,
                 is_active=True
             )
+            logger.info(f"✓ Found bot strategy ID {bot_strategy_id} from comment '{comment}': {bot_strategy.name}")
             return bot_strategy
-        except (ValueError, BotStrategy.DoesNotExist):
+        except (ValueError, BotStrategy.DoesNotExist) as e:
             # If ID is invalid or bot not found, fallback to active_bot
-            logger.warning(f"Bot strategy ID '{bot_strategy_id}' from comment '{comment}' not found")
+            logger.warning(f"✗ Bot strategy ID '{bot_strategy_id_str}' from comment '{comment}' not found or invalid: {type(e).__name__}. Using active_bot: {trade_account.active_bot.name if trade_account.active_bot else 'None'}")
             return trade_account.active_bot
         
     except Exception as e:
