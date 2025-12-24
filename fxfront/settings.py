@@ -170,13 +170,13 @@ if USE_R2_STORAGE:
     AWS_STORAGE_BUCKET_NAME = config('R2_BUCKET_NAME')
     AWS_S3_ENDPOINT_URL = config('R2_ENDPOINT_URL')  # e.g., https://xxxxx.r2.cloudflarestorage.com
     AWS_S3_REGION_NAME = 'auto'  # R2 uses 'auto'
-    AWS_S3_CUSTOM_DOMAIN = config('R2_PUBLIC_DOMAIN', default=None)  # e.g., media.yourdomain.com
+    AWS_S3_CUSTOM_DOMAIN = config('R2_PUBLIC_DOMAIN', default=None)  # e.g., pub-xxxxx.r2.dev or media.yourdomain.com
     
     # Storage settings
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',  # 1 day cache
     }
-    AWS_DEFAULT_ACL = None
+    AWS_DEFAULT_ACL = 'public-read'  # Make files public by default
     AWS_S3_FILE_OVERWRITE = False
     AWS_QUERYSTRING_AUTH = False  # Don't add auth to URLs
     
