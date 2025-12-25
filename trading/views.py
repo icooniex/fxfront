@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
+from django.http import JsonResponse
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 import requests
@@ -1047,3 +1048,112 @@ def account_bot_deactivate_view(request, account_id):
         messages.info(request, 'ไม่มี Bot ที่เปิดใช้งานอยู่')
     
     return redirect('account_detail', account_id=account_id)
+
+
+# ============================================
+# Celery Testing Views
+# ============================================
+
+def test_celery_simple(request):
+    """ทดสอบ Celery tasks แบบง่ายๆ - JSON Response"""
+    from .tasks_simple import (
+        hello_world, 
+        add_numbers, 
+        test_redis_connection,
+        test_database_access
+    )
+    
+    results = {}
+    
+    try:
+        # Test 1: Hello World
+        task1 = hello_world.delay()
+        results['hello_world'] = {
+            'task_id': task1.id,
+            'result': task1.get(timeout=10)
+        }
+        
+        # Test 2: Add Numbers
+        task2 = add_numbers.delay(10, 20)
+        results['add_numbers'] = {
+            'task_id': task2.id,
+            'result': task2.get(timeout=10)
+        }
+        
+        # Test 3: Redis Connection
+        task3 = test_redis_connection.delay()
+        results['redis_test'] = {
+            'task_id': task3.id,
+            'result': task3.get(timeout=10)
+        }
+        
+        # Test 4: Database Access
+        task4 = test_database_access.delay()
+        results['database_test'] = {
+            'task_id': task4.id,
+            'result': task4.get(timeout=10)
+        }
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'All Celery tests passed! ✅',
+            'timestamp': timezone.now().isoformat(),
+            'results': results
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'timestamp': timezone.now().isoformat()
+        }, status=500)
+
+
+def test_redis_direct(request):
+    """ทดสอบ Redis โดยตรงจาก Django (ไม่ผ่าน Celery)"""
+    from .redis_client import redis_client, set_bot_heartbeat, get_bot_heartbeat
+    
+    try:
+        # Test 1: Ping Redis
+        ping = redis_client.ping()
+        
+        # Test 2: Write/Read simple value
+        test_key = f"test_key_{timezone.now().timestamp()}"
+        redis_client.setex(test_key, 60, "test_value")
+        test_value = redis_client.get(test_key)
+        
+        # Test 3: Bot heartbeat
+        test_bot_id = 999999
+        set_bot_heartbeat(test_bot_id, {
+            'status': 'testing',
+            'timestamp': timezone.now().isoformat(),
+            'test_mode': True
+        })
+        heartbeat = get_bot_heartbeat(test_bot_id)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Redis connection working! ✅',
+            'tests': {
+                'ping': ping,
+                'write_read': {
+                    'key': test_key,
+                    'value': test_value,
+                    'success': test_value == "test_value"
+                },
+                'bot_heartbeat': {
+                    'bot_id': test_bot_id,
+                    'data': heartbeat,
+                    'success': heartbeat is not None
+                }
+            },
+            'timestamp': timezone.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Redis error: {str(e)}',
+            'timestamp': timezone.now().isoformat()
+        }, status=500)
+

@@ -45,4 +45,8 @@ urlpatterns = [
     
     # Bot API
     path('api/bot/', include('trading.api.urls')),
+    
+    # Testing (Celery + Redis)
+    path('test/celery/', views.test_celery_simple, name='test_celery'),
+    path('test/redis/', views.test_redis_direct, name='test_redis'),
 ]
