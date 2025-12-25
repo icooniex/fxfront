@@ -5,11 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
-{
-  "status": "warning",
-  "message": "⚠️ No Celery workers are running!",
-  "help": "Start worker..."
-}from django.http import JsonResponse
+from django.http import JsonResponse
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 import requests
