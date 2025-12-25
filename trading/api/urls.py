@@ -12,6 +12,10 @@ urlpatterns = [
     # Bot heartbeat
     path('heartbeat/', views.bot_heartbeat, name='api_bot_heartbeat'),
     
+    # Bot trade and strategy configuration (NEW)
+    path('bot/trade-config/<str:mt5_account_id>/', views.get_trade_config, name='api_get_trade_config'),
+    path('bot/strategy-config/<str:mt5_account_id>/<int:strategy_id>/', views.get_strategy_config, name='api_get_strategy_config'),
+    
     # Real-time account data (frontend)
     path('account/<int:account_id>/live/', views.get_account_live_data, name='api_account_live_data'),
     path('account/<int:account_id>/open-only/', views.get_account_open_positions_only, name='api_account_open_only'),
@@ -23,3 +27,4 @@ urlpatterns = [
     path('bot/backtest-result/', views.submit_backtest_result, name='api_submit_backtest_result'),
     path('bot/optimization-result/', views.submit_optimization_result, name='api_submit_optimization_result'),
 ]
+

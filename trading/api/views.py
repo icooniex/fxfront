@@ -17,8 +17,24 @@ import json
 import logging
 import sys
 from datetime import datetime, date
+from decouple import config
 
 logger = logging.getLogger(__name__)
+
+# Redis client initialization
+redis_client = None
+try:
+    import redis
+    REDIS_URL = config('REDIS_URL', default=None)
+    if REDIS_URL:
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+        logger.info("✅ Redis client initialized successfully")
+    else:
+        logger.warning("⚠️ REDIS_URL not configured, Redis features disabled")
+except ImportError:
+    logger.warning("⚠️ redis package not installed, Redis features disabled")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize Redis client: {e}")
 
 
 def get_bot_strategy_from_comment(comment, trade_account):
@@ -51,6 +67,137 @@ def get_bot_strategy_from_comment(comment, trade_account):
         
     except Exception:
         return trade_account.active_bot
+
+
+# =============================================================================
+# Redis Helper Functions for Server Heartbeat & Config Versioning
+# =============================================================================
+
+def update_server_heartbeat_in_redis(trade_account):
+    """
+    Update server heartbeat in Redis for bot to read.
+    
+    Server sends status updates to Redis:
+    - bot_status (PAUSED/ACTIVE)
+    - account_status (is_active)
+    - subscription_status (ACTIVE/EXPIRED/etc)
+    - last_update timestamp
+    
+    Args:
+        trade_account: UserTradeAccount instance
+        
+    Returns:
+        bool: Success status
+    """
+    if redis_client is None:
+        return False
+    
+    try:
+        mt5_account_id = str(trade_account.mt5_account_id)
+        timestamp = timezone.now().isoformat()
+        
+        # Prepare server heartbeat data
+        heartbeat_data = {
+            "bot_status": trade_account.bot_status,
+            "account_status": "ACTIVE" if trade_account.is_active else "INACTIVE",
+            "subscription_status": trade_account.subscription_status,
+            "last_update": timestamp,
+            "dd_blocked": "true" if trade_account.dd_blocked else "false",
+        }
+        
+        # Add dd_block_reason if applicable
+        if trade_account.dd_blocked and trade_account.dd_block_reason:
+            heartbeat_data["dd_block_reason"] = trade_account.dd_block_reason
+        
+        # Send to Redis with 5 minute expiry
+        server_key = f"server:heartbeat:{mt5_account_id}"
+        redis_client.hset(server_key, mapping=heartbeat_data)
+        redis_client.expire(server_key, 300)  # 5 minutes
+        
+        logger.info(f"✅ Server heartbeat updated in Redis for account {mt5_account_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to update server heartbeat in Redis: {e}")
+        return False
+
+
+def update_trade_config_version_in_redis(mt5_account_id, version=None):
+    """
+    Update or increment trade config version in Redis.
+    
+    Args:
+        mt5_account_id: MT5 account ID
+        version: Specific version number, or None to increment
+        
+    Returns:
+        int: New version number
+    """
+    if redis_client is None:
+        return 0
+    
+    try:
+        config_key = f"bot:trade_config:{mt5_account_id}"
+        
+        if version is None:
+            # Increment version
+            new_version = redis_client.hincrby(config_key, "version", 1)
+        else:
+            # Set specific version
+            redis_client.hset(config_key, "version", version)
+            new_version = version
+        
+        # Set expiry to 24 hours
+        redis_client.expire(config_key, 86400)
+        
+        logger.info(f"✅ Trade config version updated to {new_version} for account {mt5_account_id}")
+        return new_version
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to update trade config version in Redis: {e}")
+        return 0
+
+
+def update_strategy_config_version_in_redis(mt5_account_id, strategy_id, version=None):
+    """
+    Update or increment strategy config version in Redis.
+    
+    Args:
+        mt5_account_id: MT5 account ID
+        strategy_id: Strategy ID
+        version: Specific version number, or None to increment
+        
+    Returns:
+        int: New version number
+    """
+    if redis_client is None:
+        return 0
+    
+    try:
+        config_key = f"bot:strategy_config:{mt5_account_id}:{strategy_id}"
+        
+        if version is None:
+            # Increment version
+            new_version = redis_client.hincrby(config_key, "version", 1)
+        else:
+            # Set specific version
+            redis_client.hset(config_key, "version", version)
+            new_version = version
+        
+        # Set expiry to 24 hours
+        redis_client.expire(config_key, 86400)
+        
+        logger.info(f"✅ Strategy config version updated to {new_version} for account {mt5_account_id}, strategy {strategy_id}")
+        return new_version
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to update strategy config version in Redis: {e}")
+        return 0
+
+
+# =============================================================================
+# API Views
+# =============================================================================
 
 
 @require_http_methods(["POST"])
@@ -1398,4 +1545,180 @@ def submit_optimization_result(request):
             'last_optimization_date': bot_strategy.last_optimization_date.isoformat()
         }
     }, status=200)
+
+
+@require_http_methods(["GET"])
+@require_bot_api_key
+def get_trade_config(request, mt5_account_id):
+    """
+    Get trade configuration for a specific MT5 account.
+    Bot uses this to fetch updated trade config when version changes.
+    
+    Returns:
+    - version: Config version number
+    - bot_status: Current bot status (ACTIVE/PAUSED)
+    - account_status: Account status (ACTIVE/INACTIVE)
+    - subscription_status: Subscription status
+    - peak_balance: Peak balance for DD calculation
+    - risk_config: Risk management settings (DD protection, etc)
+    - trade_config: Trade settings (lot_size, timeframes, etc)
+    """
+    try:
+        trade_account = UserTradeAccount.objects.select_related(
+            'subscription_package',
+            'active_bot'
+        ).get(
+            mt5_account_id=str(mt5_account_id),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {mt5_account_id} not found"
+        }, status=404)
+    
+    # Update server heartbeat in Redis
+    update_server_heartbeat_in_redis(trade_account)
+    
+    # Get current version from Redis or initialize
+    if redis_client:
+        try:
+            config_key = f"bot:trade_config:{mt5_account_id}"
+            current_version = redis_client.hget(config_key, "version")
+            if current_version:
+                version = int(current_version)
+            else:
+                # Initialize version
+                version = update_trade_config_version_in_redis(mt5_account_id, 1)
+        except Exception as e:
+            logger.warning(f"Failed to get version from Redis: {e}")
+            version = 1
+    else:
+        version = 1
+    
+    # Prepare risk config
+    risk_config = {}
+    if trade_account.subscription_package.allow_dd_protection:
+        # Get DD protection settings from trade_config
+        trade_cfg = trade_account.trade_config or {}
+        risk_config = {
+            "dd_protection_enabled": trade_cfg.get('dd_protection_enabled', False),
+            "daily_dd_limit_percent": trade_cfg.get('daily_dd_limit_percent', 5.0),
+            "max_account_dd_percent": trade_cfg.get('max_account_dd_percent', 10.0),
+        }
+    
+    # Build response
+    response_data = {
+        'status': 'success',
+        'version': version,
+        'bot_status': trade_account.bot_status,
+        'account_status': 'ACTIVE' if trade_account.is_active else 'INACTIVE',
+        'subscription_status': trade_account.subscription_status,
+        'subscription_expiry': trade_account.subscription_expiry.isoformat(),
+        'current_balance': str(trade_account.current_balance),
+        'peak_balance': str(trade_account.peak_balance),
+        'dd_blocked': trade_account.dd_blocked,
+        'dd_block_reason': trade_account.dd_block_reason,
+        'risk_config': risk_config,
+        'trade_config': trade_account.trade_config or {},
+        'active_bot_id': trade_account.active_bot.id if trade_account.active_bot else None,
+        'active_bot_name': trade_account.active_bot.name if trade_account.active_bot else None,
+    }
+    
+    return JsonResponse(response_data, status=200)
+
+
+@require_http_methods(["GET"])
+@require_bot_api_key
+def get_strategy_config(request, mt5_account_id, strategy_id):
+    """
+    Get strategy optimization parameters for a specific strategy.
+    Bot uses this to fetch updated strategy config when version changes.
+    
+    Returns:
+    - version: Config version number
+    - status: Strategy status (ACTIVE/INACTIVE/BETA)
+    - parameters_by_symbol: Optimized parameters per symbol/pair
+    - allowed_symbols: List of allowed symbols for this strategy
+    - is_pair_trading: Whether this is a pair trading strategy
+    """
+    try:
+        # Verify account exists and is active
+        trade_account = UserTradeAccount.objects.get(
+            mt5_account_id=str(mt5_account_id),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {mt5_account_id} not found"
+        }, status=404)
+    
+    try:
+        bot_strategy = BotStrategy.objects.get(
+            id=strategy_id,
+            is_active=True
+        )
+    except BotStrategy.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Bot strategy {strategy_id} not found"
+        }, status=404)
+    except ValueError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid strategy_id format'
+        }, status=400)
+    
+    # Get current version from Redis or initialize
+    if redis_client:
+        try:
+            config_key = f"bot:strategy_config:{mt5_account_id}:{strategy_id}"
+            current_version = redis_client.hget(config_key, "version")
+            if current_version:
+                version = int(current_version)
+            else:
+                # Initialize version
+                version = update_strategy_config_version_in_redis(mt5_account_id, strategy_id, 1)
+        except Exception as e:
+            logger.warning(f"Failed to get version from Redis: {e}")
+            version = 1
+    else:
+        version = 1
+    
+    # Parse current_parameters to extract parameters by symbol
+    current_params = bot_strategy.current_parameters or {}
+    
+    # Build parameters_by_symbol
+    # Expected format: {"XAUUSD": {...params...}, "EURUSD": {...params...}}
+    # or for pairs: {"EURUSD/GBPUSD": {...params...}}
+    parameters_by_symbol = current_params.get('parameters_by_symbol', {})
+    
+    # If no parameters_by_symbol, check if there are global parameters
+    if not parameters_by_symbol and current_params:
+        # If current_params has direct parameters, apply to all allowed symbols
+        # Remove known metadata keys
+        param_keys = {k: v for k, v in current_params.items() 
+                     if k not in ['parameters_by_symbol', 'last_optimization_date', 'version']}
+        if param_keys:
+            # Apply to all symbols
+            parameters_by_symbol = {symbol: param_keys for symbol in bot_strategy.allowed_symbols}
+    
+    # Build response
+    response_data = {
+        'status': 'success',
+        'version': version,
+        'bot_strategy_id': bot_strategy.id,
+        'bot_strategy_name': bot_strategy.name,
+        'bot_status': bot_strategy.status,
+        'bot_strategy_class': bot_strategy.bot_strategy_class,
+        'is_pair_trading': bot_strategy.is_pair_trading,
+        'allowed_symbols': bot_strategy.allowed_symbols,
+        'parameters_by_symbol': parameters_by_symbol,
+        'optimization_config': bot_strategy.optimization_config or {},
+        'last_optimization_date': bot_strategy.last_optimization_date.isoformat() if bot_strategy.last_optimization_date else None,
+    }
+    
+    return JsonResponse(response_data, status=200)
+
 

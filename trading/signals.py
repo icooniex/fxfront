@@ -2,7 +2,10 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
-from .models import SubscriptionPayment, UserTradeAccount, PaymentStatus, SubscriptionStatus
+from .models import SubscriptionPayment, UserTradeAccount, PaymentStatus, SubscriptionStatus, BotStrategy
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(pre_save, sender=SubscriptionPayment)
@@ -80,3 +83,81 @@ def handle_payment_status_change(sender, instance, **kwargs):
             
     except SubscriptionPayment.DoesNotExist:
         pass
+
+
+@receiver(post_save, sender=UserTradeAccount)
+def handle_trade_account_update(sender, instance, created, update_fields, **kwargs):
+    """
+    Handle UserTradeAccount updates and update Redis versions accordingly.
+    Triggers when trade_config, bot_status, or subscription_status changes.
+    """
+    if created:
+        # New account, initialize Redis heartbeat
+        try:
+            from trading.api.views import update_server_heartbeat_in_redis, update_trade_config_version_in_redis
+            update_server_heartbeat_in_redis(instance)
+            update_trade_config_version_in_redis(instance.mt5_account_id, 1)
+            logger.info(f"Initialized Redis for new account {instance.mt5_account_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Redis for new account: {e}")
+        return
+    
+    # For existing accounts, update Redis
+    try:
+        from trading.api.views import update_server_heartbeat_in_redis, update_trade_config_version_in_redis
+        
+        # Always update server heartbeat
+        update_server_heartbeat_in_redis(instance)
+        
+        # Check if important fields were updated
+        if update_fields:
+            important_fields = {'trade_config', 'bot_status', 'subscription_status', 'dd_blocked', 'active_bot'}
+            if any(field in update_fields for field in important_fields):
+                update_trade_config_version_in_redis(instance.mt5_account_id)
+                logger.info(f"Incremented trade config version for account {instance.mt5_account_id}")
+        else:
+            # If update_fields is None, we don't know what changed, so increment version
+            update_trade_config_version_in_redis(instance.mt5_account_id)
+            logger.info(f"Incremented trade config version for account {instance.mt5_account_id}")
+            
+    except Exception as e:
+        logger.error(f"Failed to update Redis for account {instance.mt5_account_id}: {e}")
+
+
+@receiver(post_save, sender=BotStrategy)
+def handle_bot_strategy_update(sender, instance, created, update_fields, **kwargs):
+    """
+    Handle BotStrategy updates and increment Redis strategy config versions.
+    Triggers when current_parameters, status, or allowed_symbols changes.
+    """
+    if created:
+        # New strategy, no need to update versions yet
+        return
+    
+    try:
+        from trading.api.views import update_strategy_config_version_in_redis
+        
+        # Check if important fields were updated
+        should_increment_version = False
+        
+        if update_fields:
+            important_fields = {'current_parameters', 'status', 'allowed_symbols'}
+            should_increment_version = any(field in update_fields for field in important_fields)
+        else:
+            # If update_fields is None, increment to be safe
+            should_increment_version = True
+        
+        if should_increment_version:
+            # Update version for all active accounts using this strategy
+            active_accounts = UserTradeAccount.objects.filter(
+                active_bot=instance,
+                is_active=True
+            )
+            
+            for account in active_accounts:
+                update_strategy_config_version_in_redis(account.mt5_account_id, instance.id)
+                logger.info(f"Incremented strategy config version for account {account.mt5_account_id}, strategy {instance.id}")
+            
+    except Exception as e:
+        logger.error(f"Failed to update Redis for strategy {instance.id}: {e}")
+
