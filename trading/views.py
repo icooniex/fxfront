@@ -1055,8 +1055,14 @@ def account_bot_deactivate_view(request, account_id):
 # ============================================
 
 def test_celery_simple(request):
-    """ทดสอบ Celery tasks แบบง่ายๆ - JSON Response"""
-    from .tasks_simple import hello_world
+    """ทดสอบ Celery tasks ครบทุก function - JSON Response"""
+    from .tasks_simple import (
+        hello_world,
+        add_numbers,
+        test_redis_connection,
+        test_database_access,
+        slow_task
+    )
     from celery import current_app
     
     try:
@@ -1072,19 +1078,51 @@ def test_celery_simple(request):
                 'timestamp': timezone.now().isoformat()
             }, status=503)
         
-        # ทดสอบแค่ task เดียวก่อน (ง่ายและเร็ว)
-        task = hello_world.delay()
+        results = {}
         
-        # เพิ่ม timeout เป็น 30 วินาที
-        result = task.get(timeout=30)
+        # Test 1: Hello World
+        task1 = hello_world.delay()
+        results['hello_world'] = {
+            'task_id': task1.id,
+            'result': task1.get(timeout=30)
+        }
+        
+        # Test 2: Add Numbers
+        task2 = add_numbers.delay(15, 25)
+        results['add_numbers'] = {
+            'task_id': task2.id,
+            'result': task2.get(timeout=30)
+        }
+        
+        # Test 3: Redis Connection
+        task3 = test_redis_connection.delay()
+        results['redis_test'] = {
+            'task_id': task3.id,
+            'result': task3.get(timeout=30)
+        }
+        
+        # Test 4: Database Access
+        task4 = test_database_access.delay()
+        results['database_test'] = {
+            'task_id': task4.id,
+            'result': task4.get(timeout=30)
+        }
+        
+        # Test 5: Slow Task (3 seconds)
+        task5 = slow_task.delay(3)
+        results['slow_task'] = {
+            'task_id': task5.id,
+            'result': task5.get(timeout=30)
+        }
         
         return JsonResponse({
             'status': 'success',
-            'message': '✅ Celery is working!',
+            'message': '✅ All Celery tests passed!',
             'timestamp': timezone.now().isoformat(),
             'worker_count': len(active_workers),
             'workers': list(active_workers.keys()),
-            'task_result': result
+            'tests_completed': len(results),
+            'results': results
         })
         
     except TimeoutError:
