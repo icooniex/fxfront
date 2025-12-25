@@ -207,3 +207,61 @@ LOGOUT_REDIRECT_URL = 'welcome'
 LINE_CHANNEL_ID = config('LINE_CHANNEL_ID', default='')
 LINE_CHANNEL_SECRET = config('LINE_CHANNEL_SECRET', default='')
 LINE_CALLBACK_URL = config('LINE_CALLBACK_URL', default='http://localhost:8000/auth/line/callback/')
+
+# ============================================
+# Redis Configuration
+# ============================================
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+
+# ============================================
+# Celery Configuration
+# ============================================
+# Use Redis as broker and result backend
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
+# Celery settings
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Task execution settings
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
+
+# Connection settings
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
+# Result backend settings
+CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    'master_name': 'mymaster',
+    'visibility_timeout': 3600,
+}
+
+# Worker settings
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after 1000 tasks
+
+# Task routing (optional - for future use)
+CELERY_TASK_ROUTES = {
+    'trading.tasks.process_trade_events': {'queue': 'trade_events'},
+    'trading.tasks.cleanup_old_stream_messages': {'queue': 'maintenance'},
+}
+
+# Beat schedule for periodic tasks (optional - requires celery-beat)
+CELERY_BEAT_SCHEDULE = {
+    'process-trade-events': {
+        'task': 'trading.tasks.process_trade_events',
+        'schedule': 10.0,  # Run every 10 seconds
+    },
+    'cleanup-old-messages': {
+        'task': 'trading.tasks.cleanup_old_stream_messages',
+        'schedule': 86400.0,  # Run daily
+    },
+}
