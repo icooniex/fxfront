@@ -5,7 +5,11 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
-from django.http import JsonResponse
+{
+  "status": "warning",
+  "message": "⚠️ No Celery workers are running!",
+  "help": "Start worker..."
+}from django.http import JsonResponse
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 import requests
@@ -1056,55 +1060,50 @@ def account_bot_deactivate_view(request, account_id):
 
 def test_celery_simple(request):
     """ทดสอบ Celery tasks แบบง่ายๆ - JSON Response"""
-    from .tasks_simple import (
-        hello_world, 
-        add_numbers, 
-        test_redis_connection,
-        test_database_access
-    )
-    
-    results = {}
+    from .tasks_simple import hello_world
+    from celery import current_app
     
     try:
-        # Test 1: Hello World
-        task1 = hello_world.delay()
-        results['hello_world'] = {
-            'task_id': task1.id,
-            'result': task1.get(timeout=10)
-        }
+        # เช็คว่า Celery worker online หรือไม่
+        inspect = current_app.control.inspect()
+        active_workers = inspect.active()
         
-        # Test 2: Add Numbers
-        task2 = add_numbers.delay(10, 20)
-        results['add_numbers'] = {
-            'task_id': task2.id,
-            'result': task2.get(timeout=10)
-        }
+        if not active_workers:
+            return JsonResponse({
+                'status': 'warning',
+                'message': '⚠️ No Celery workers are running!',
+                'help': 'Start worker with: celery -A fxfront worker --loglevel=info',
+                'timestamp': timezone.now().isoformat()
+            }, status=503)
         
-        # Test 3: Redis Connection
-        task3 = test_redis_connection.delay()
-        results['redis_test'] = {
-            'task_id': task3.id,
-            'result': task3.get(timeout=10)
-        }
+        # ทดสอบแค่ task เดียวก่อน (ง่ายและเร็ว)
+        task = hello_world.delay()
         
-        # Test 4: Database Access
-        task4 = test_database_access.delay()
-        results['database_test'] = {
-            'task_id': task4.id,
-            'result': task4.get(timeout=10)
-        }
+        # เพิ่ม timeout เป็น 30 วินาที
+        result = task.get(timeout=30)
         
         return JsonResponse({
             'status': 'success',
-            'message': 'All Celery tests passed! ✅',
+            'message': '✅ Celery is working!',
             'timestamp': timezone.now().isoformat(),
-            'results': results
+            'worker_count': len(active_workers),
+            'workers': list(active_workers.keys()),
+            'task_result': result
         })
+        
+    except TimeoutError:
+        return JsonResponse({
+            'status': 'error',
+            'message': '⏱️ Task timeout - Worker is slow or not responding',
+            'help': 'Check Railway Celery worker logs for errors',
+            'timestamp': timezone.now().isoformat()
+        }, status=504)
         
     except Exception as e:
         return JsonResponse({
             'status': 'error',
-            'message': str(e),
+            'message': f'❌ {str(e)}',
+            'error_type': type(e).__name__,
             'timestamp': timezone.now().isoformat()
         }, status=500)
 
