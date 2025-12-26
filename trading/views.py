@@ -5,11 +5,12 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
-from datetime import timedelta
+from datetime import timedelta, datetime
 from decimal import Decimal, InvalidOperation
 import requests
 import urllib.parse
 import secrets
+import logging
 from .models import (
     UserProfile,
     SubscriptionPackage,
@@ -21,6 +22,72 @@ from .models import (
     BotStatus,
     PaymentStatus
 )
+
+logger = logging.getLogger(__name__)
+
+# Import Redis client
+try:
+    from .api.views import redis_client
+except ImportError:
+    redis_client = None
+    logger.warning("⚠️ Redis client not available")
+
+
+# ============================================
+# Helper Functions
+# ============================================
+
+def check_bot_status_from_redis(account):
+    """
+    Check bot status from Redis heartbeat.
+    Returns 'DOWN' if bot hasn't sent heartbeat in the last 5 minutes,
+    otherwise returns current bot_status.
+    
+    Args:
+        account: UserTradeAccount instance
+        
+    Returns:
+        str: Bot status ('ACTIVE', 'PAUSED', 'DOWN')
+    """
+    if redis_client is None:
+        # Fallback to DB status if Redis not available
+        return account.bot_status
+    
+    try:
+        mt5_account_id = str(account.mt5_account_id)
+        heartbeat_key = f"bot:heartbeat:{mt5_account_id}"
+        
+        # Get last_seen timestamp from Redis
+        last_seen = redis_client.hget(heartbeat_key, "last_seen")
+        
+        if not last_seen:
+            # No heartbeat found, bot is DOWN
+            return 'DOWN'
+        
+        # Parse timestamp and check if it's recent (within 5 minutes)
+        try:
+            last_seen_dt = datetime.fromisoformat(last_seen.replace('Z', '+00:00'))
+            # Make timezone aware if needed
+            if last_seen_dt.tzinfo is None:
+                last_seen_dt = timezone.make_aware(last_seen_dt)
+            
+            time_since_heartbeat = timezone.now() - last_seen_dt
+            
+            if time_since_heartbeat.total_seconds() > 60:  # 1 minute
+                return 'DOWN'
+            
+            # Bot is alive, return actual status from Redis or DB
+            bot_status = redis_client.hget(heartbeat_key, "bot_status")
+            return bot_status if bot_status else account.bot_status
+            
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to parse last_seen timestamp: {e}")
+            return 'DOWN'
+    
+    except Exception as e:
+        logger.error(f"Error checking bot status from Redis: {e}")
+        # Fallback to DB status on error
+        return account.bot_status
 
 
 # ============================================
@@ -289,11 +356,8 @@ def dashboard_view(request):
     
     # Enrich accounts with additional data
     for account in accounts:
-        # Check bot status based on last sync
-        if account.last_sync_datetime:
-            time_since_sync = timezone.now() - account.last_sync_datetime
-            if time_since_sync.total_seconds() > 300:  # 5 minutes = 300 seconds
-                account.bot_status = 'DOWN'
+        # Check bot status from Redis heartbeat
+        account.bot_status = check_bot_status_from_redis(account)
         
         # Count open positions
         account.open_positions_count = TradeTransaction.objects.filter(
@@ -332,11 +396,8 @@ def account_detail_view(request, account_id):
     """Detailed view of a trading account"""
     account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user, is_active=True)
     
-    # Check bot status based on last sync
-    if account.last_sync_datetime:
-        time_since_sync = timezone.now() - account.last_sync_datetime
-        if time_since_sync.total_seconds() > 300:  # 5 minutes = 300 seconds
-            account.bot_status = 'DOWN'
+    # Check bot status from Redis heartbeat
+    account.bot_status = check_bot_status_from_redis(account)
     
     # Get open positions
     open_positions = TradeTransaction.objects.filter(
