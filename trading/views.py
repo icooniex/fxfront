@@ -37,57 +37,61 @@ except ImportError:
 # Helper Functions
 # ============================================
 
-def check_bot_status_from_redis(account):
+def get_account_data_from_redis(account):
     """
-    Check bot status from Redis heartbeat.
-    Returns 'DOWN' if bot hasn't sent heartbeat in the last 5 minutes,
-    otherwise returns current bot_status.
+    Get bot status and balance from Redis heartbeat.
     
     Args:
         account: UserTradeAccount instance
         
     Returns:
-        str: Bot status ('ACTIVE', 'PAUSED', 'DOWN')
+        dict: {'bot_status': str, 'balance': Decimal}
     """
     if redis_client is None:
-        # Fallback to DB status if Redis not available
-        return account.bot_status
+        # Fallback to DB data if Redis not available
+        return {
+            'bot_status': account.bot_status,
+            'balance': account.current_balance
+        }
     
     try:
         mt5_account_id = str(account.mt5_account_id)
         heartbeat_key = f"bot:heartbeat:{mt5_account_id}"
         
-        # Get last_seen timestamp from Redis
-        last_seen = redis_client.hget(heartbeat_key, "last_seen")
+        # Get heartbeat data from Redis
+        heartbeat_data = redis_client.hgetall(heartbeat_key)
         
-        if not last_seen:
+        if not heartbeat_data or 'last_seen' not in heartbeat_data:
             # No heartbeat found, bot is DOWN
-            return 'DOWN'
+            return {
+                'bot_status': 'DOWN',
+                'balance': account.current_balance
+            }
         
-        # Parse timestamp and check if it's recent (within 5 minutes)
-        try:
-            last_seen_dt = datetime.fromisoformat(last_seen.replace('Z', '+00:00'))
-            # Make timezone aware if needed
-            if last_seen_dt.tzinfo is None:
-                last_seen_dt = timezone.make_aware(last_seen_dt)
-            
-            time_since_heartbeat = timezone.now() - last_seen_dt
-            
-            if time_since_heartbeat.total_seconds() > 60:  # 1 minute
-                return 'DOWN'
-            
-            # Bot is alive, return actual status from Redis or DB
-            bot_status = redis_client.hget(heartbeat_key, "bot_status")
-            return bot_status if bot_status else account.bot_status
-            
-        except (ValueError, TypeError) as e:
-            logger.error(f"Failed to parse last_seen timestamp: {e}")
-            return 'DOWN'
+        # Get bot_status from Redis
+        bot_status = heartbeat_data.get('bot_status') or account.bot_status
+        
+        # Get balance from Redis
+        balance = account.current_balance
+        balance_str = heartbeat_data.get('balance') or heartbeat_data.get('current_balance')
+        if balance_str:
+            try:
+                balance = Decimal(str(balance_str))
+            except (ValueError, TypeError, InvalidOperation) as e:
+                logger.warning(f"Failed to parse balance from Redis: {e}")
+        
+        return {
+            'bot_status': bot_status,
+            'balance': balance
+        }
     
     except Exception as e:
-        logger.error(f"Error checking bot status from Redis: {e}")
-        # Fallback to DB status on error
-        return account.bot_status
+        logger.error(f"Error getting account data from Redis: {e}")
+        # Fallback to DB data on error
+        return {
+            'bot_status': account.bot_status,
+            'balance': account.current_balance
+        }
 
 
 # ============================================
@@ -356,8 +360,10 @@ def dashboard_view(request):
     
     # Enrich accounts with additional data
     for account in accounts:
-        # Check bot status from Redis heartbeat
-        account.bot_status = check_bot_status_from_redis(account)
+        # Get bot status and balance from Redis heartbeat
+        redis_data = get_account_data_from_redis(account)
+        account.bot_status = redis_data['bot_status']
+        account.current_balance = redis_data['balance']
         
         # Count open positions
         account.open_positions_count = TradeTransaction.objects.filter(
@@ -396,8 +402,10 @@ def account_detail_view(request, account_id):
     """Detailed view of a trading account"""
     account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user, is_active=True)
     
-    # Check bot status from Redis heartbeat
-    account.bot_status = check_bot_status_from_redis(account)
+    # Get bot status and balance from Redis heartbeat
+    redis_data = get_account_data_from_redis(account)
+    account.bot_status = redis_data['bot_status']
+    account.current_balance = redis_data['balance']
     
     # Get open positions
     open_positions = TradeTransaction.objects.filter(
