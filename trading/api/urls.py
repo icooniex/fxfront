@@ -12,6 +12,9 @@ urlpatterns = [
     # Bot heartbeat
     path('heartbeat/', views.bot_heartbeat, name='api_bot_heartbeat'),
     
+    # DD Protection
+    path('dd-protection/', views.update_dd_protection_status, name='api_update_dd_protection'),
+    
     # Bot trade and strategy configuration (NEW)
     path('bot/trade-config/<str:mt5_account_id>/', views.get_trade_config, name='api_get_trade_config'),
     path('bot/strategy-config/<str:mt5_account_id>/<int:strategy_id>/', views.get_strategy_config, name='api_get_strategy_config'),

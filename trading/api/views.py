@@ -1722,3 +1722,117 @@ def get_strategy_config(request, mt5_account_id, strategy_id):
     return JsonResponse(response_data, status=200)
 
 
+@require_http_methods(["POST"])
+@require_bot_api_key
+def update_dd_protection_status(request):
+    """
+    Update DD (Drawdown) Protection status for a trade account.
+    Bot calls this when DD protection is triggered or cleared.
+    
+    Request Body:
+        {
+            "mt5_account_id": "274989950",
+            "dd_blocked": true,
+            "dd_block_reason": "DAILY_DD_LIMIT",  // or "MAX_ACCOUNT_DD"
+            "current_balance": "10500.25",  // optional
+            "current_equity": "10450.75",  // optional
+            "peak_balance": "12000.50"  // optional
+        }
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
+    
+    # Validate required fields
+    required_fields = ['mt5_account_id', 'dd_blocked']
+    errors = {}
+    
+    for field in required_fields:
+        if field not in data:
+            errors[field] = ['This field is required']
+    
+    if errors:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid data',
+            'errors': errors
+        }, status=400)
+    
+    # Find the trade account
+    try:
+        trade_account = UserTradeAccount.objects.get(
+            mt5_account_id=str(data['mt5_account_id']),
+            is_active=True
+        )
+    except UserTradeAccount.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f"Trade account {data['mt5_account_id']} not found"
+        }, status=404)
+    
+    # Update DD protection status
+    dd_blocked = bool(data['dd_blocked'])
+    
+    update_fields = ['dd_blocked', 'dd_block_reason', 'dd_blocked_at', 'updated_at']
+    
+    with transaction.atomic():
+        trade_account.dd_blocked = dd_blocked
+        
+        if dd_blocked:
+            # DD protection triggered
+            trade_account.dd_block_reason = data.get('dd_block_reason', 'DAILY_DD_LIMIT')
+            if not trade_account.dd_blocked_at:
+                trade_account.dd_blocked_at = timezone.now()
+        else:
+            # DD protection cleared
+            trade_account.dd_block_reason = None
+            trade_account.dd_blocked_at = None
+        
+        # Update current_balance if provided
+        if 'current_balance' in data:
+            try:
+                current_balance = Decimal(str(data['current_balance']))
+                trade_account.current_balance = current_balance
+                update_fields.append('current_balance')
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        
+        # Update current_equity if provided
+        if 'current_equity' in data:
+            try:
+                current_equity = Decimal(str(data['current_equity']))
+                trade_account.current_equity = current_equity
+                update_fields.append('current_equity')
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        
+        # Update peak_balance if provided
+        if 'peak_balance' in data:
+            try:
+                peak_balance = Decimal(str(data['peak_balance']))
+                trade_account.peak_balance = peak_balance
+                update_fields.append('peak_balance')
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        
+        trade_account.save(update_fields=list(set(update_fields)))
+    
+    logger.info(f"✅ DD protection status updated for account {trade_account.mt5_account_id}: blocked={dd_blocked}")
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': 'DD protection status updated successfully',
+        'data': {
+            'mt5_account_id': trade_account.mt5_account_id,
+            'dd_blocked': trade_account.dd_blocked,
+            'dd_block_reason': trade_account.dd_block_reason,
+            'dd_blocked_at': trade_account.dd_blocked_at.isoformat() if trade_account.dd_blocked_at else None,
+            'current_balance': str(trade_account.current_balance),
+            'current_equity': str(trade_account.current_equity),
+            'peak_balance': str(trade_account.peak_balance)
+        }
+    }, status=200)
