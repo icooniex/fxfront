@@ -91,6 +91,8 @@ class TradeTransactionAdmin(admin.ModelAdmin):
         'position_status',
         'close_reason',
         'lot_size',
+        'entry_price',
+        'exit_price',
         'pnl_display',
         'comment',
         'opened_at',
