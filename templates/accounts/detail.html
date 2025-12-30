@@ -59,7 +59,7 @@
                 {% endif %}
                 
                 <div class="account-balance">
-                    ฿{{ account.current_balance|floatformat:2 }}
+                    ${{ account.current_balance|floatformat:2 }}
                 </div>
             </div>
 
@@ -67,7 +67,7 @@
                 <div class="dashboard-stat">
                     <div class="dashboard-stat-label">Total P&L</div>
                     <div id="total-pnl" class="dashboard-stat-value {% if account.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                        {% if account.total_pnl >= 0 %}+{% endif %}฿{{ account.total_pnl|floatformat:2 }}
+                        {% if account.total_pnl >= 0 %}+{% endif %}${{ account.total_pnl|floatformat:2 }}
                     </div>
                 </div>
                 <div class="dashboard-stat">
@@ -241,7 +241,7 @@
                         </div>
                         <div style="text-align: right;">
                             <div class="{% if position.profit_loss >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 18px; font-weight: 600;">
-                                {% if position.profit_loss >= 0 %}+{% endif %}฿{{ position.profit_loss|floatformat:2 }}
+                                {% if position.profit_loss >= 0 %}+{% endif %}${{ position.profit_loss|floatformat:2 }}
                             </div>
                         </div>
                     </div>
