@@ -52,7 +52,7 @@
 
                 {% if package.description %}
                 <div style="margin: 12px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
-                    {{ package.description }}
+                    {{ package.description|linebreaksbr }}
                 </div>
                 {% endif %}
 
