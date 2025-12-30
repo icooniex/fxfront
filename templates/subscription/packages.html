@@ -50,6 +50,12 @@
                     {{ package.duration_days }} วัน
                 </div>
 
+                {% if package.description %}
+                <div style="margin: 12px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                    {{ package.description }}
+                </div>
+                {% endif %}
+
                 <div class="divider"></div>
 
                 <ul class="package-features">
