@@ -148,15 +148,9 @@ def handle_bot_strategy_update(sender, instance, created, update_fields, **kwarg
             should_increment_version = True
         
         if should_increment_version:
-            # Update version for all active accounts using this strategy
-            active_accounts = UserTradeAccount.objects.filter(
-                active_bot=instance,
-                is_active=True
-            )
-            
-            for account in active_accounts:
-                update_strategy_config_version_in_redis(account.mt5_account_id, instance.id)
-                logger.info(f"Incremented strategy config version for account {account.mt5_account_id}, strategy {instance.id}")
+            # Update global strategy config version (not account-specific)
+            update_strategy_config_version_in_redis(instance.id)
+            logger.info(f"Incremented global strategy config version for strategy {instance.id}")
             
     except Exception as e:
         logger.error(f"Failed to update Redis for strategy {instance.id}: {e}")
