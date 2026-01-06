@@ -17,7 +17,7 @@ urlpatterns = [
     
     # Bot trade and strategy configuration (NEW)
     path('bot/trade-config/<str:mt5_account_id>/', views.get_trade_config, name='api_get_trade_config'),
-    path('bot/strategy-config/<str:mt5_account_id>/<int:strategy_id>/', views.get_strategy_config, name='api_get_strategy_config'),
+    path('bot/strategy-config/<int:strategy_id>/', views.get_strategy_config, name='api_get_strategy_config'),
     
     # Real-time account data (frontend)
     path('account/<int:account_id>/live/', views.get_account_live_data, name='api_account_live_data'),

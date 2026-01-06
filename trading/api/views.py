@@ -158,12 +158,11 @@ def update_trade_config_version_in_redis(mt5_account_id, version=None):
         return 0
 
 
-def update_strategy_config_version_in_redis(mt5_account_id, strategy_id, version=None):
+def update_strategy_config_version_in_redis(strategy_id, version=None):
     """
     Update or increment strategy config version in Redis.
     
     Args:
-        mt5_account_id: MT5 account ID
         strategy_id: Strategy ID
         version: Specific version number, or None to increment
         
@@ -174,7 +173,7 @@ def update_strategy_config_version_in_redis(mt5_account_id, strategy_id, version
         return 0
     
     try:
-        config_key = f"bot:strategy_config:{mt5_account_id}:{strategy_id}"
+        config_key = f"bot:strategy_config:{strategy_id}"
         
         if version is None:
             # Increment version
@@ -187,7 +186,7 @@ def update_strategy_config_version_in_redis(mt5_account_id, strategy_id, version
         # Set expiry to 24 hours
         redis_client.expire(config_key, 86400)
         
-        logger.info(f"✅ Strategy config version updated to {new_version} for account {mt5_account_id}, strategy {strategy_id}")
+        logger.info(f"✅ Strategy config version updated to {new_version} for strategy {strategy_id}")
         return new_version
         
     except Exception as e:
@@ -1630,10 +1629,11 @@ def get_trade_config(request, mt5_account_id):
 
 @require_http_methods(["GET"])
 @require_bot_api_key
-def get_strategy_config(request, mt5_account_id, strategy_id):
+def get_strategy_config(request, strategy_id):
     """
     Get strategy optimization parameters for a specific strategy.
     Bot uses this to fetch updated strategy config when version changes.
+    This is a global configuration not tied to any specific account.
     
     Returns:
     - version: Config version number
@@ -1642,18 +1642,6 @@ def get_strategy_config(request, mt5_account_id, strategy_id):
     - allowed_symbols: List of allowed symbols for this strategy
     - is_pair_trading: Whether this is a pair trading strategy
     """
-    try:
-        # Verify account exists and is active
-        trade_account = UserTradeAccount.objects.get(
-            mt5_account_id=str(mt5_account_id),
-            is_active=True
-        )
-    except UserTradeAccount.DoesNotExist:
-        return JsonResponse({
-            'status': 'error',
-            'message': f"Trade account {mt5_account_id} not found"
-        }, status=404)
-    
     try:
         bot_strategy = BotStrategy.objects.get(
             id=strategy_id,
@@ -1673,13 +1661,13 @@ def get_strategy_config(request, mt5_account_id, strategy_id):
     # Get current version from Redis or initialize
     if redis_client:
         try:
-            config_key = f"bot:strategy_config:{mt5_account_id}:{strategy_id}"
+            config_key = f"bot:strategy_config:{strategy_id}"
             current_version = redis_client.hget(config_key, "version")
             if current_version:
                 version = int(current_version)
             else:
                 # Initialize version
-                version = update_strategy_config_version_in_redis(mt5_account_id, strategy_id, 1)
+                version = update_strategy_config_version_in_redis(strategy_id, 1)
         except Exception as e:
             logger.warning(f"Failed to get version from Redis: {e}")
             version = 1
