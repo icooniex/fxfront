@@ -21,6 +21,12 @@
         <div class="row g-2">
             <div class="col">
                 <div class="glass-card" style="padding: 8px 16px;">
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Total Revenue</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #10b981;">฿{{ total_revenue|floatformat:0|intcomma }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card" style="padding: 8px 16px;">
                     <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Total Trade Account</div>
                     <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">{{ total_accounts }}</div>
                 </div>
@@ -37,6 +43,7 @@
                     <div style="font-size: 20px; font-weight: 700; color: var(--primary-blue);">{{ live_bots }}</div>
                 </div>
             </div>
+            
         </div>
     </div>
     <!-- Accounts Section -->

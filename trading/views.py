@@ -1187,11 +1187,18 @@ def admin_dashboard_view(request):
     active_subscriptions = accounts.filter(subscription_status='ACTIVE').count()
     live_bots = sum(1 for data in accounts_data if data['bot_status'] == 'ACTIVE')
     
+    # Calculate total revenue from completed payments
+    from django.db.models import Sum
+    total_revenue = SubscriptionPayment.objects.filter(
+        payment_status='COMPLETED'
+    ).aggregate(total=Sum('payment_amount'))['total'] or 0
+    
     context = {
         'accounts_data': accounts_data,
         'total_accounts': total_accounts,
         'active_subscriptions': active_subscriptions,
         'live_bots': live_bots,
+        'total_revenue': total_revenue,
     }
     
     return render(request, 'admin/dashboard.html', context)
