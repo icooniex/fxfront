@@ -1116,3 +1116,82 @@ def account_bot_deactivate_view(request, account_id):
         messages.info(request, 'ไม่มี Bot ที่เปิดใช้งานอยู่')
     
     return redirect('account_detail', account_id=account_id)
+
+
+# ============================================
+# Admin Dashboard View
+# ============================================
+
+@login_required
+def admin_dashboard_view(request):
+    """
+    Admin Dashboard for monitoring all trade accounts.
+    Only accessible by superusers/staff.
+    """
+    # Check if user is admin
+    if not request.user.is_staff:
+        messages.error(request, 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้')
+        return redirect('dashboard')
+    
+    # Get all active trade accounts
+    accounts = UserTradeAccount.objects.filter(
+        is_active=True
+    ).select_related(
+        'user',
+        'user__profile',
+        'subscription_package',
+        'active_bot'
+    ).order_by('-subscription_status', '-subscription_expiry')
+    
+    # Prepare account data with Redis info
+    accounts_data = []
+    for account in accounts:
+        # Get Redis data (bot status and current balance)
+        redis_data = get_account_data_from_redis(account)
+        
+        # Calculate days until expiry
+        days_until_expiry = None
+        if account.subscription_expiry:
+            delta = account.subscription_expiry - timezone.now()
+            days_until_expiry = delta.days
+        
+        # Check if bot is down (no heartbeat)
+        bot_status_display = redis_data['bot_status']
+        if redis_data['bot_status'] == 'DOWN':
+            bot_status_class = 'danger'
+        elif redis_data['bot_status'] == 'PAUSED':
+            bot_status_class = 'warning'
+        else:
+            bot_status_class = 'success'
+        
+        # Subscription status class
+        if account.subscription_status == 'ACTIVE':
+            sub_status_class = 'success'
+        elif account.subscription_status == 'EXPIRED':
+            sub_status_class = 'danger'
+        else:
+            sub_status_class = 'warning'
+        
+        accounts_data.append({
+            'account': account,
+            'bot_status': bot_status_display,
+            'bot_status_class': bot_status_class,
+            'current_balance': redis_data['balance'],
+            'days_until_expiry': days_until_expiry,
+            'sub_status_class': sub_status_class,
+            'user_full_name': f"{account.user.profile.first_name} {account.user.profile.last_name}" if hasattr(account.user, 'profile') else account.user.username,
+        })
+    
+    # Statistics
+    total_accounts = accounts.count()
+    active_subscriptions = accounts.filter(subscription_status='ACTIVE').count()
+    live_bots = sum(1 for data in accounts_data if data['bot_status'] == 'ACTIVE')
+    
+    context = {
+        'accounts_data': accounts_data,
+        'total_accounts': total_accounts,
+        'active_subscriptions': active_subscriptions,
+        'live_bots': live_bots,
+    }
+    
+    return render(request, 'admin/dashboard.html', context)

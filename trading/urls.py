@@ -17,6 +17,9 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', views.dashboard_view, name='dashboard'),
     
+    # Admin Dashboard (for staff only)
+    path('bo/monitor/', views.admin_dashboard_view, name='admin_dashboard'),
+    
     # Accounts
     path('accounts/', views.accounts_list_view, name='accounts_list'),
     path('account/<int:account_id>/', views.account_detail_view, name='account_detail'),
