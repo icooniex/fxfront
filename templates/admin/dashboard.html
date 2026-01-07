@@ -7,19 +7,44 @@
 {% block content %}
 <div class="container-fluid py-4" style="max-width: 1800px; margin: 0 auto;">
     <!-- Header -->
-    <div class="mb-4 fade-in">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="mb-2">
-                    <i class="bi bi-shield-check"></i> Admin Dashboard
-                </h1>
-                <p class="text-secondary mb-0">
-                    Total: {{ total_accounts }} accounts | Active: {{ active_subscriptions }} | Live: {{ live_bots }}
-                </p>
-            </div>
+    <div class="mb-3 fade-in">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="mb-0">
+                <i class="bi bi-shield-check"></i> Admin Dashboard
+            </h1>
             <button class="btn btn-glass btn-sm" onclick="location.reload()">
                 <i class="bi bi-arrow-clockwise"></i> Refresh
             </button>
+        </div>
+        
+        <!-- Stat Cards -->
+        <div class="row g-2">
+            <div class="col">
+                <div class="glass-card" style="padding: 8px 16px;">
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Total Trade Account</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">{{ total_accounts }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card" style="padding: 8px 16px;">
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Active</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--success);">{{ active_subscriptions }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card" style="padding: 8px 16px;">
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Live Bots</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--primary-blue);">{{ live_bots }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Accounts Section -->
+    <div class="mt-4">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0" style="font-size: 1.5rem; font-weight: 600;">
+                <i class="bi bi-collection"></i> Trade Accounts
+            </h2>
         </div>
     </div>
 
