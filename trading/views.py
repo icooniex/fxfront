@@ -1199,6 +1199,7 @@ def admin_dashboard_view(request):
         'active_subscriptions': active_subscriptions,
         'live_bots': live_bots,
         'total_revenue': total_revenue,
+        'now': timezone.now(),
     }
     
     return render(request, 'admin/dashboard.html', context)
