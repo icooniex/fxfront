@@ -402,10 +402,11 @@ def account_detail_view(request, account_id):
     """Detailed view of a trading account"""
     account = get_object_or_404(UserTradeAccount, id=account_id, user=request.user, is_active=True)
     
-    # Get bot status and balance from Redis heartbeat
+    # Get bot status and balance from Redis heartbeat (for real-time balance)
     redis_data = get_account_data_from_redis(account)
-    account.bot_status = redis_data['bot_status']
-    account.current_balance = redis_data['balance']
+    # Use database bot_status (source of truth), Redis balance for real-time updates
+    # account.bot_status is already loaded from database
+    account.current_balance = redis_data['balance']  # Only update balance from Redis
     
     # Get open positions
     open_positions = TradeTransaction.objects.filter(
