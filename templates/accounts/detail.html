@@ -302,11 +302,17 @@
             </div>
         </div>
         {% if account.bot_status == 'ACTIVE' %}
-        <button class="btn btn-danger-glass w-100 mt-2" data-bs-toggle="modal" data-bs-target="#pauseBotModal">
+        <button class="btn btn-danger-glass w-100 mt-2" 
+                data-bs-toggle="modal" 
+                data-bs-target="#pauseBotModal"
+                {% if account.dd_blocked %}disabled{% endif %}>
             <i class="bi bi-pause-circle me-2"></i>Pause Bot
         </button>
         {% else %}
-        <button class="btn btn-primary-blue w-100 mt-2" data-bs-toggle="modal" data-bs-target="#resumeBotModal">
+        <button class="btn btn-primary-blue w-100 mt-2" 
+                data-bs-toggle="modal" 
+                data-bs-target="#resumeBotModal"
+                {% if account.dd_blocked %}disabled{% endif %}>
             <i class="bi bi-play-circle me-2"></i>Resume Bot
         </button>
         {% endif %}
@@ -390,6 +396,13 @@
             <form method="post" action="{% url 'account_bot_pause' account.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
+                    {% if account.dd_blocked %}
+                    <div class="text-center mb-3">
+                        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0 text-danger" style="font-weight: 600;">ไม่สามารถ Pause Bot ได้</p>
+                    <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot ถูกหยุดโดย DD Protection แล้ว กรุณารอให้ระบบล้าง DD Block ก่อน</p>
+                    {% else %}
                     <div class="text-center mb-3">
                         <i class="bi bi-pause-circle text-warning" style="font-size: 3rem;"></i>
                     </div>
@@ -398,10 +411,13 @@
                     <p class="text-center text-primary-blue mb-0 mt-2" style="font-weight: 600;">{{ account.active_bot.name }}</p>
                     {% endif %}
                     <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot จะหยุดการเทรดอัตโนมัติทันที</p>
+                    {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">{% if account.dd_blocked %}ปิด{% else %}ยกเลิก{% endif %}</button>
+                    {% if not account.dd_blocked %}
                     <button type="submit" class="btn btn-danger">ยืนยัน Pause Bot</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -419,6 +435,13 @@
             <form method="post" action="{% url 'account_bot_resume' account.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
+                    {% if account.dd_blocked %}
+                    <div class="text-center mb-3">
+                        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0 text-danger" style="font-weight: 600;">ไม่สามารถ Resume Bot ได้</p>
+                    <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot ถูกหยุดโดย DD Protection กรุณารอให้ระบบล้าง DD Block ก่อนจึงจะสามารถ Resume ได้</p>
+                    {% else %}
                     <div class="text-center mb-3">
                         <i class="bi bi-play-circle text-success" style="font-size: 3rem;"></i>
                     </div>
@@ -427,10 +450,13 @@
                     <p class="text-center text-primary-blue mb-0 mt-2" style="font-weight: 600;">{{ account.active_bot.name }}</p>
                     {% endif %}
                     <p class="text-center text-secondary mt-3" style="font-size: 0.9rem;">Bot จะเริ่มการเทรดอัตโนมัติทันที</p>
+                    {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-glass" data-bs-dismiss="modal">{% if account.dd_blocked %}ปิด{% else %}ยกเลิก{% endif %}</button>
+                    {% if not account.dd_blocked %}
                     <button type="submit" class="btn btn-primary-blue">ยืนยัน Resume Bot</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
