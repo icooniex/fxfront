@@ -1765,49 +1765,51 @@ def update_dd_protection_status(request):
     # Update DD protection status
     dd_blocked = bool(data['dd_blocked'])
     
-    update_fields = ['dd_blocked', 'dd_block_reason', 'dd_blocked_at', 'updated_at']
+    update_fields = ['dd_blocked', 'dd_block_reason', 'dd_blocked_at']
     
-    with transaction.atomic():
-        trade_account.dd_blocked = dd_blocked
-        
-        if dd_blocked:
-            # DD protection triggered
-            trade_account.dd_block_reason = data.get('dd_block_reason', 'DAILY_DD_LIMIT')
-            if not trade_account.dd_blocked_at:
-                trade_account.dd_blocked_at = timezone.now()
-        else:
-            # DD protection cleared
-            trade_account.dd_block_reason = None
-            trade_account.dd_blocked_at = None
-        
-        # Update current_balance if provided
-        if 'current_balance' in data:
-            try:
-                current_balance = Decimal(str(data['current_balance']))
-                trade_account.current_balance = current_balance
-                update_fields.append('current_balance')
-            except (ValueError, TypeError, InvalidOperation):
-                pass
-        
-        # Update current_equity if provided
-        if 'current_equity' in data:
-            try:
-                current_equity = Decimal(str(data['current_equity']))
-                trade_account.current_equity = current_equity
-                update_fields.append('current_equity')
-            except (ValueError, TypeError, InvalidOperation):
-                pass
-        
-        # Update peak_balance if provided
-        if 'peak_balance' in data:
-            try:
-                peak_balance = Decimal(str(data['peak_balance']))
-                trade_account.peak_balance = peak_balance
-                update_fields.append('peak_balance')
-            except (ValueError, TypeError, InvalidOperation):
-                pass
-        
-        trade_account.save(update_fields=list(set(update_fields)))
+    try:
+        with transaction.atomic():
+            trade_account.dd_blocked = dd_blocked
+            
+            if dd_blocked:
+                # DD protection triggered
+                trade_account.dd_block_reason = data.get('dd_block_reason', 'DAILY_DD_LIMIT')
+                if not trade_account.dd_blocked_at:
+                    trade_account.dd_blocked_at = timezone.now()
+            else:
+                # DD protection cleared
+                trade_account.dd_block_reason = None
+                trade_account.dd_blocked_at = None
+            
+            # Update current_balance if provided
+            if 'current_balance' in data:
+                try:
+                    current_balance = Decimal(str(data['current_balance']))
+                    trade_account.current_balance = current_balance
+                    update_fields.append('current_balance')
+                except (ValueError, TypeError, InvalidOperation):
+                    logger.warning(f"Invalid current_balance format: {data['current_balance']}")
+            
+            # Update peak_balance if provided
+            if 'peak_balance' in data:
+                try:
+                    peak_balance = Decimal(str(data['peak_balance']))
+                    trade_account.peak_balance = peak_balance
+                    update_fields.append('peak_balance')
+                except (ValueError, TypeError, InvalidOperation):
+                    logger.warning(f"Invalid peak_balance format: {data['peak_balance']}")
+            
+            trade_account.save(update_fields=list(set(update_fields)))
+            
+            # Update server heartbeat in Redis after successful save
+            update_server_heartbeat_in_redis(trade_account)
+            
+    except Exception as e:
+        logger.error(f"❌ Failed to update DD protection status for account {data.get('mt5_account_id')}: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to update DD protection status: {str(e)}'
+        }, status=500)
     
     logger.info(f"✅ DD protection status updated for account {trade_account.mt5_account_id}: blocked={dd_blocked}")
     
@@ -1820,7 +1822,6 @@ def update_dd_protection_status(request):
             'dd_block_reason': trade_account.dd_block_reason,
             'dd_blocked_at': trade_account.dd_blocked_at.isoformat() if trade_account.dd_blocked_at else None,
             'current_balance': str(trade_account.current_balance),
-            'current_equity': str(trade_account.current_equity),
             'peak_balance': str(trade_account.peak_balance)
         }
     }, status=200)
