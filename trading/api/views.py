@@ -1772,12 +1772,14 @@ def update_dd_protection_status(request):
             trade_account.dd_blocked = dd_blocked
             
             if dd_blocked:
-                # DD protection triggered
+                # DD protection triggered - pause the bot
                 trade_account.dd_block_reason = data.get('dd_block_reason', 'DAILY_DD_LIMIT')
+                trade_account.bot_status = 'PAUSED'
+                update_fields.append('bot_status')
                 if not trade_account.dd_blocked_at:
                     trade_account.dd_blocked_at = timezone.now()
             else:
-                # DD protection cleared
+                # DD protection cleared - keep bot paused until user manually resumes
                 trade_account.dd_block_reason = None
                 trade_account.dd_blocked_at = None
             

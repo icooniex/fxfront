@@ -25,9 +25,9 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
-# Import Redis client
+# Import Redis client and heartbeat function
 try:
-    from .api.views import redis_client
+    from .api.views import redis_client, update_server_heartbeat_in_redis
 except ImportError:
     redis_client = None
     logger.warning("⚠️ Redis client not available")
@@ -600,6 +600,10 @@ def account_bot_pause_view(request, account_id):
     else:
         account.bot_status = 'PAUSED'
         account.save(update_fields=['bot_status', 'updated_at'])
+        
+        # Update server heartbeat in Redis
+        update_server_heartbeat_in_redis(account)
+        
         messages.success(request, f'Bot ถูก Pause เรียบร้อยแล้ว')
     
     return redirect('account_detail', account_id=account_id)
@@ -620,6 +624,10 @@ def account_bot_resume_view(request, account_id):
     else:
         account.bot_status = 'ACTIVE'
         account.save(update_fields=['bot_status', 'updated_at'])
+        
+        # Update server heartbeat in Redis
+        update_server_heartbeat_in_redis(account)
+        
         messages.success(request, f'Bot เริ่มทำงานอีกครั้งเรียบร้อยแล้ว')
     
     return redirect('account_detail', account_id=account_id)
