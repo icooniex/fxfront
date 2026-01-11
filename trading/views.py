@@ -1267,12 +1267,16 @@ def admin_dashboard_view(request):
         payment_status='COMPLETED'
     ).aggregate(total=Sum('payment_amount'))['total'] or 0
     
+    # Fetch today's high-impact news
+    today_news = get_today_high_impact_news()
+    
     context = {
         'accounts_data': accounts_data,
         'total_accounts': total_accounts,
         'active_subscriptions': active_subscriptions,
         'live_bots': live_bots,
         'total_revenue': total_revenue,
+        'today_news': today_news,
         'now': timezone.now(),
     }
     

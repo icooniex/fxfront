@@ -18,8 +18,9 @@
         </div>
 
         <!-- Today's High Impact News -->
+
+        {% comment %}
         <!-- DUMMY DATA FOR TESTING UI -->
-         {% comment %}
         <div class="news-section glass-card-static mb-4 fade-in" style="background: linear-gradient(135deg, rgba(21, 139, 249, 0.08) 0%, rgba(21, 139, 249, 0.02) 100%); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
                 <i class="bi bi-newspaper" style="font-size: 20px; color: var(--primary-blue);"></i>
@@ -60,7 +61,6 @@
         {% endcomment %}
         
         <!-- Real Data (Comment out dummy and uncomment this when ready) -->
-        
         {% if today_news %}
         <div class="news-section glass-card-static mb-4 fade-in" style="background: linear-gradient(135deg, rgba(21, 139, 249, 0.08) 0%, rgba(21, 139, 249, 0.02) 100%); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
