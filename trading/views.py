@@ -646,6 +646,12 @@ def account_update_bot_config(request, account_id):
     trade_config['dynamic_position_sizing_enabled'] = dynamic_position_sizing_enabled
     trade_config['risk_percentage_per_trade'] = risk_percentage_per_trade
     
+    # Ensure enabled_strategies exists and is correct
+    if account.active_bot:
+        trade_config['enabled_strategies'] = [account.active_bot.id]
+    elif 'enabled_strategies' not in trade_config:
+        trade_config['enabled_strategies'] = []
+    
     account.trade_config = trade_config
     account.save()
     
@@ -1147,6 +1153,7 @@ def account_bot_activate_view(request, account_id):
         
         account.trade_config = {
             'enabled_symbols': bot.allowed_symbols.copy(),
+            'enabled_strategies': [bot.id],
             'lot_size': float(min_lot),
             'auto_pause_on_news': False,
             'daily_dd_limit': None,
@@ -1157,6 +1164,10 @@ def account_bot_activate_view(request, account_id):
         
         if old_bot and old_bot.id != bot.id:
             messages.info(request, 'Bot config ถูก reset ทั้งหมดตามการตั้งค่าเริ่มต้นของ Bot ใหม่')
+    else:
+        # Update enabled_strategies even if bot is the same (to ensure consistency)
+        if 'enabled_strategies' not in account.trade_config or account.trade_config.get('enabled_strategies') != [bot.id]:
+            account.trade_config['enabled_strategies'] = [bot.id]
     
     account.save(update_fields=['active_bot', 'bot_activated_at', 'trade_config'])
     
@@ -1184,7 +1195,12 @@ def account_bot_deactivate_view(request, account_id):
         bot_name = account.active_bot.name
         account.active_bot = None
         account.bot_activated_at = None
-        account.save(update_fields=['active_bot', 'bot_activated_at'])
+        
+        # Clear enabled_strategies from trade_config
+        if 'enabled_strategies' in account.trade_config:
+            account.trade_config['enabled_strategies'] = []
+        
+        account.save(update_fields=['active_bot', 'bot_activated_at', 'trade_config'])
         messages.success(request, f'ปิดใช้งาน Bot "{bot_name}" สำเร็จ')
     else:
         messages.info(request, 'ไม่มี Bot ที่เปิดใช้งานอยู่')
