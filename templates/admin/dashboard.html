@@ -12,9 +12,17 @@
             <h1 class="mb-0">
                 <i class="bi bi-shield-check"></i> Admin Dashboard
             </h1>
-            <button class="btn btn-glass btn-sm" onclick="location.reload()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 12px;">
+                    <label class="mb-0 me-2" style="font-size: 12px; color: var(--text-muted); white-space: nowrap;">Auto Refresh</label>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="autoRefreshToggle" checked style="cursor: pointer;">
+                    </div>
+                </div>
+                <button class="btn btn-glass btn-sm" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
         </div>
         
         <!-- Stat Cards -->
@@ -265,9 +273,49 @@
 </div>
 
 <script>
-    // Auto-refresh entire page every 30 seconds
-    setInterval(function() {
-        location.reload();
-    }, 30000);
+    // Auto-refresh control
+    let autoRefreshInterval;
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    
+    // Load saved preference from localStorage
+    const savedAutoRefresh = localStorage.getItem('adminAutoRefresh');
+    if (savedAutoRefresh !== null) {
+        autoRefreshToggle.checked = savedAutoRefresh === 'true';
+    }
+    
+    // Function to start auto-refresh
+    function startAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+        autoRefreshInterval = setInterval(function() {
+            location.reload();
+        }, 30000); // 30 seconds
+    }
+    
+    // Function to stop auto-refresh
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+    }
+    
+    // Handle toggle change
+    autoRefreshToggle.addEventListener('change', function() {
+        const isEnabled = this.checked;
+        localStorage.setItem('adminAutoRefresh', isEnabled);
+        
+        if (isEnabled) {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+    });
+    
+    // Start auto-refresh if enabled
+    if (autoRefreshToggle.checked) {
+        startAutoRefresh();
+    }
 </script>
 {% endblock %}
