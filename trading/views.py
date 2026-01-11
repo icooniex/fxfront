@@ -11,6 +11,7 @@ import requests
 import urllib.parse
 import secrets
 import logging
+from dateutil import parser as date_parser
 from .models import (
     UserProfile,
     SubscriptionPackage,
@@ -92,6 +93,66 @@ def get_account_data_from_redis(account):
             'bot_status': account.bot_status,
             'balance': account.current_balance
         }
+
+
+def get_today_high_impact_news():
+    """
+    Fetch high-impact news for today from FX News API.
+    
+    Returns:
+        list: List of today's high-impact news events
+    """
+    try:
+        # Get API URL from settings
+        api_url = settings.FX_NEWS_API_URL
+        
+        # Fetch news data
+        response = requests.get(api_url, timeout=5)
+        response.raise_for_status()
+        
+        news_data = response.json()
+        
+        # Get today's date in UTC
+        today = timezone.now().date()
+        
+        # Filter for today's high-impact news
+        today_news = []
+        for event in news_data:
+            impact = event.get('impact', '')
+            # Include HIGH and MEDIUM impact news
+            if impact in ['HIGH', 'MEDIUM']:
+                try:
+                    # Parse event time
+                    event_time_str = event.get('event_time_utc')
+                    if event_time_str:
+                        event_time = date_parser.parse(event_time_str)
+                        # Convert to local timezone
+                        event_time_local = timezone.localtime(event_time)
+                        
+                        # Check if event is today
+                        if event_time_local.date() == today:
+                            today_news.append({
+                                'time': event_time_local.strftime('%H:%M'),
+                                'currency': event.get('currency', ''),
+                                'event': event.get('event', ''),
+                                'impact': impact,
+                                'time_obj': event_time_local,
+                            })
+                except Exception as e:
+                    logger.warning(f"Error parsing news event: {e}")
+                    continue
+        
+        # Sort by time
+        today_news.sort(key=lambda x: x['time_obj'])
+        
+        return today_news
+        
+    except requests.RequestException as e:
+        logger.error(f"Error fetching FX news: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error in get_today_high_impact_news: {e}")
+        return []
 
 
 # ============================================
@@ -387,8 +448,12 @@ def dashboard_view(request):
         else:
             account.days_until_expiry = 0
     
+    # Fetch today's high-impact news
+    today_news = get_today_high_impact_news()
+    
     context = {
-        'accounts': accounts
+        'accounts': accounts,
+        'today_news': today_news,
     }
     return render(request, 'dashboard/index.html', context)
 

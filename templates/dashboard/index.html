@@ -17,6 +17,79 @@
             <i class="bi bi-arrow-down-circle spinner-primary"></i>
         </div>
 
+        <!-- Today's High Impact News -->
+        <!-- DUMMY DATA FOR TESTING UI -->
+         {% comment %}
+        <div class="news-section glass-card-static mb-4 fade-in" style="background: linear-gradient(135deg, rgba(21, 139, 249, 0.08) 0%, rgba(21, 139, 249, 0.02) 100%); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <i class="bi bi-newspaper" style="font-size: 20px; color: var(--primary-blue);"></i>
+                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0;">
+                    ข่าวเศรษฐกิจที่เกี่ยวข้องวันนี้
+                </h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <!-- Dummy News 1 - HIGH IMPACT -->
+                <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); border-radius: 8px; padding: 2px 10px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #ff4444; flex-shrink: 0;"></div>
+                    <div style="min-width: 45px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #e0e0e0;">08:30</div>
+                    </div>
+                    <div style="min-width: 35px; text-align: center;">
+                        <span style="display: inline-block; background: rgba(21, 139, 249, 0.2); color: #6BC1FF; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">AUD</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; color: #e0e0e0; line-height: 1.4;">CPI m/m</div>
+                    </div>
+                </div>
+                <!-- Dummy News 3 - MEDIUM IMPACT -->
+                <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); border-radius: 8px; padding: 2px 10px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #ffa726; flex-shrink: 0;"></div>
+                    <div style="min-width: 45px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #e0e0e0;">15:00</div>
+                    </div>
+                    <div style="min-width: 35px; text-align: center;">
+                        <span style="display: inline-block; background: rgba(21, 139, 249, 0.2); color: #6BC1FF; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">EUR</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; color: #e0e0e0; line-height: 1.4;">German Factory Orders m/m</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        {% endcomment %}
+        
+        <!-- Real Data (Comment out dummy and uncomment this when ready) -->
+        
+        {% if today_news %}
+        <div class="news-section glass-card-static mb-4 fade-in" style="background: linear-gradient(135deg, rgba(21, 139, 249, 0.08) 0%, rgba(21, 139, 249, 0.02) 100%); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <i class="bi bi-newspaper" style="font-size: 20px; color: var(--primary-blue);"></i>
+                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0;">
+                    ข่าวเศรษฐกิจที่เกี่ยวข้องวันนี้
+                </h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                {% for news in today_news %}
+                <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 10px;">
+                    <!-- Impact Indicator Dot -->
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {% if news.impact == 'HIGH' %}#ff4444{% elif news.impact == 'MEDIUM' %}#ffa726{% else %}#66bb6a{% endif %}; flex-shrink: 0;"></div>
+                    <div style="min-width: 45px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #e0e0e0;">{{ news.time }}</div>
+                    </div>
+                    <div style="min-width: 35px; text-align: center;">
+                        <span style="display: inline-block; background: rgba(21, 139, 249, 0.2); color: #6BC1FF; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">{{ news.currency }}</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; color: #e0e0e0; line-height: 1.4;">{{ news.event }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+
         <!-- Trading Accounts List -->
         <div id="accounts-container">
             {% if accounts %}

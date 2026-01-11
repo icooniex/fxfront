@@ -208,3 +208,6 @@ LOGOUT_REDIRECT_URL = 'welcome'
 LINE_CHANNEL_ID = config('LINE_CHANNEL_ID', default='')
 LINE_CHANNEL_SECRET = config('LINE_CHANNEL_SECRET', default='')
 LINE_CALLBACK_URL = config('LINE_CALLBACK_URL', default='http://localhost:8000/auth/line/callback/')
+
+# FX News API Configuration
+FX_NEWS_API_URL = config('FX_NEWS_API_URL', default='https://fxnews-scraper-develop.up.railway.app/weekly_ecocar.json')
