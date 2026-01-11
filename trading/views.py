@@ -655,6 +655,9 @@ def account_update_bot_config(request, account_id):
     account.trade_config = trade_config
     account.save()
     
+    # Update server heartbeat in Redis to notify bot
+    update_server_heartbeat_in_redis(account)
+    
     messages.success(request, 'อัพเดทการตั้งค่า Bot เรียบร้อยแล้ว')
     return redirect('account_detail', account_id=account_id)
 
@@ -1171,6 +1174,9 @@ def account_bot_activate_view(request, account_id):
     
     account.save(update_fields=['active_bot', 'bot_activated_at', 'trade_config'])
     
+    # Update server heartbeat in Redis to notify bot
+    update_server_heartbeat_in_redis(account)
+    
     messages.success(request, f'เปิดใช้งาน Bot "{bot.name}" สำเร็จ')
     return redirect('account_detail', account_id=account_id)
 
@@ -1201,6 +1207,10 @@ def account_bot_deactivate_view(request, account_id):
             account.trade_config['enabled_strategies'] = []
         
         account.save(update_fields=['active_bot', 'bot_activated_at', 'trade_config'])
+        
+        # Update server heartbeat in Redis to notify bot
+        update_server_heartbeat_in_redis(account)
+        
         messages.success(request, f'ปิดใช้งาน Bot "{bot_name}" สำเร็จ')
     else:
         messages.info(request, 'ไม่มี Bot ที่เปิดใช้งานอยู่')
