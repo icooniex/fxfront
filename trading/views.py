@@ -1272,6 +1272,13 @@ def admin_dashboard_view(request):
         else:
             sub_status_class = 'warning'
         
+        # Count open positions
+        open_positions_count = TradeTransaction.objects.filter(
+            trade_account=account,
+            position_status='OPEN',
+            is_active=True
+        ).count()
+        
         accounts_data.append({
             'account': account,
             'bot_status': bot_status_display,
@@ -1280,6 +1287,7 @@ def admin_dashboard_view(request):
             'days_until_expiry': days_until_expiry,
             'sub_status_class': sub_status_class,
             'user_full_name': f"{account.user.profile.first_name} {account.user.profile.last_name}" if hasattr(account.user, 'profile') else account.user.username,
+            'open_positions_count': open_positions_count,
         })
     
     # Statistics

@@ -229,11 +229,19 @@
 
                     <!-- Balance -->
                     <div class="mb-2">
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.1;">
-                            {% if data.current_balance %}
-                                ${{ data.current_balance|floatformat:2|intcomma }}
-                            {% else %}
-                                $0.00
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.1;">
+                                {% if data.current_balance %}
+                                    ${{ data.current_balance|floatformat:2|intcomma }}
+                                {% else %}
+                                    $0.00
+                                {% endif %}
+                            </div>
+                            {% if data.open_positions_count > 0 %}
+                            <div style="font-size: 11px; color: var(--primary-blue); font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                <i class="bi bi-record-fill"></i>
+                                <span>{{ data.open_positions_count }}</span>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
