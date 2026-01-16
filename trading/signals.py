@@ -2,7 +2,10 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
-from .models import SubscriptionPayment, UserTradeAccount, PaymentStatus, SubscriptionStatus, BotStrategy
+from .models import (
+    SubscriptionPayment, UserTradeAccount, PaymentStatus, 
+    SubscriptionStatus, BotStrategy, RequestType
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,6 +15,9 @@ logger = logging.getLogger(__name__)
 def handle_payment_status_change(sender, instance, **kwargs):
     """
     Handle payment status changes and update trade account accordingly
+    - PURCHASE: Send notification (trade_account created in separate MT5 setup step)
+    - RENEWAL: Reset period counters and extend subscription
+    - MT5_RESET: Update MT5 credentials and clear Redis keys
     - COMPLETED: Activate account and set subscription dates
     - FAILED: Keep account in PENDING status, allow re-upload
     - REFUNDED: Cancel account subscription
@@ -30,56 +36,97 @@ def handle_payment_status_change(sender, instance, **kwargs):
         if old_status == new_status:
             return
         
-        # Get the associated trade account
-        trade_account = instance.trade_account
-        
         # Handle COMPLETED status
         if new_status == PaymentStatus.COMPLETED and old_status != PaymentStatus.COMPLETED:
-            # Activate the account
-            trade_account.subscription_status = SubscriptionStatus.ACTIVE
-            
-            # Check if this is a renewal by checking admin_notes
-            is_renewal = instance.admin_notes and 'Renewal for account:' in instance.admin_notes
-            
-            if is_renewal:
-                # For renewal, extend from current expiry or start fresh
-                current_expiry = trade_account.subscription_expiry
-                if current_expiry and current_expiry > timezone.now():
-                    # Still active, extend from current expiry
-                    trade_account.subscription_expiry = current_expiry + timedelta(days=instance.subscription_package.duration_days)
-                else:
-                    # Expired or no expiry, start fresh
-                    trade_account.subscription_start = timezone.now()
-                    trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
-            else:
-                # New subscription
-                # Set subscription dates
-                if not trade_account.subscription_start or trade_account.subscription_status == SubscriptionStatus.PENDING:
-                    trade_account.subscription_start = timezone.now()
-                
-                # Calculate expiry date based on package duration
-                trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
-            
-            # Update package if changed (optional, for package upgrades)
-            if trade_account.subscription_package != instance.subscription_package:
-                trade_account.subscription_package = instance.subscription_package
-            
             # Set verified timestamp
             instance.verified_at = timezone.now()
             
-            trade_account.save(update_fields=['subscription_status', 'subscription_start', 'subscription_expiry', 'subscription_package', 'updated_at'])
+            # Handle different request types
+            if instance.request_type == RequestType.PURCHASE:
+                # New purchase - trade_account will be created during MT5 setup
+                # TODO: Send LINE/SMS notification with setup link
+                logger.info(f"New purchase approved for user {instance.user.username}, waiting for MT5 setup")
+                
+            elif instance.request_type == RequestType.RENEWAL:
+                # Renewal - extend existing account subscription
+                trade_account = instance.trade_account
+                if trade_account:
+                    trade_account.subscription_status = SubscriptionStatus.ACTIVE
+                    
+                    # Reset MT5 reset counter for new period
+                    trade_account.current_period_reset_count = 0
+                    
+                    # Extend from current expiry or start fresh
+                    current_expiry = trade_account.subscription_expiry
+                    if current_expiry and current_expiry > timezone.now():
+                        # Still active, extend from current expiry
+                        trade_account.subscription_expiry = current_expiry + timedelta(days=instance.subscription_package.duration_days)
+                    else:
+                        # Expired or no expiry, start fresh
+                        trade_account.subscription_start = timezone.now()
+                        trade_account.subscription_expiry = timezone.now() + timedelta(days=instance.subscription_package.duration_days)
+                    
+                    # Update package if changed (for upgrades/downgrades)
+                    if trade_account.subscription_package != instance.subscription_package:
+                        trade_account.subscription_package = instance.subscription_package
+                    
+                    trade_account.save(update_fields=[
+                        'subscription_status', 'subscription_start', 'subscription_expiry', 
+                        'subscription_package', 'current_period_reset_count', 'updated_at'
+                    ])
+                    logger.info(f"Renewed subscription for account {trade_account.mt5_account_id}")
+                    
+            elif instance.request_type == RequestType.MT5_RESET:
+                # MT5 reset - update credentials with new data
+                trade_account = instance.trade_account
+                if trade_account and instance.new_mt5_data:
+                    # Store old MT5 account ID for Redis cleanup
+                    old_mt5_account_id = trade_account.mt5_account_id
+                    
+                    # Update MT5 fields from new_mt5_data
+                    if 'account_name' in instance.new_mt5_data:
+                        trade_account.account_name = instance.new_mt5_data['account_name']
+                    if 'mt5_account_id' in instance.new_mt5_data:
+                        trade_account.mt5_account_id = instance.new_mt5_data['mt5_account_id']
+                    if 'mt5_password' in instance.new_mt5_data:
+                        trade_account.mt5_password = instance.new_mt5_data['mt5_password']
+                    if 'mt5_server' in instance.new_mt5_data:
+                        trade_account.mt5_server = instance.new_mt5_data['mt5_server']
+                    if 'broker_name' in instance.new_mt5_data:
+                        trade_account.broker_name = instance.new_mt5_data['broker_name']
+                    
+                    # Increment reset counter
+                    trade_account.current_period_reset_count += 1
+                    trade_account.last_mt5_reset_at = timezone.now()
+                    
+                    # Force bot to PAUSED - admin must manually restart after MT5 setup
+                    trade_account.bot_status = 'PAUSED'
+                    
+                    trade_account.save()
+                    
+                    # Clear old Redis keys if account ID changed
+                    if old_mt5_account_id != trade_account.mt5_account_id:
+                        try:
+                            from trading.api.views import clear_redis_keys_for_account
+                            clear_redis_keys_for_account(old_mt5_account_id)
+                            logger.info(f"Cleared Redis keys for old account ID {old_mt5_account_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to clear Redis keys: {e}")
+                    
+                    logger.info(f"MT5 reset completed for account {trade_account.account_name}")
             
         # Handle FAILED status - keep account in PENDING, allow re-upload
         elif new_status == PaymentStatus.FAILED:
             # Keep account status as PENDING so user can upload new slip
-            if trade_account.subscription_status == SubscriptionStatus.PENDING:
+            if instance.trade_account and instance.trade_account.subscription_status == SubscriptionStatus.PENDING:
                 pass  # No change needed, stays PENDING
             
         # Handle REFUNDED status
         elif new_status == PaymentStatus.REFUNDED:
             # Cancel the subscription
-            trade_account.subscription_status = SubscriptionStatus.CANCELLED
-            trade_account.save(update_fields=['subscription_status', 'updated_at'])
+            if instance.trade_account:
+                instance.trade_account.subscription_status = SubscriptionStatus.CANCELLED
+                instance.trade_account.save(update_fields=['subscription_status', 'updated_at'])
             
     except SubscriptionPayment.DoesNotExist:
         pass

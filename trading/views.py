@@ -21,7 +21,9 @@ from .models import (
     BotStrategy,
     BacktestResult,
     BotStatus,
-    PaymentStatus
+    PaymentStatus,
+    SubscriptionStatus,
+    RequestType
 )
 
 logger = logging.getLogger(__name__)
@@ -837,49 +839,45 @@ def payment_submit_view(request):
                 # Start fresh from now
                 new_expiry = timezone.now() + timedelta(days=package.duration_days)
             
-            # Store the new expiry in a temporary field or track it through payment
-            # We'll update it when payment is confirmed
-            # For now, keep the account in current status
+            # Create subscription payment record for renewal
+            payment = SubscriptionPayment.objects.create(
+                user=request.user,
+                trade_account=trade_account,
+                subscription_package=package,
+                request_type='RENEWAL',
+                payment_amount=package.price,
+                payment_status='PENDING',
+                payment_method='Bank Transfer',
+                payment_slip=payment_slip,
+                payment_date=timezone.now(),
+                admin_notes=f'Renewal for account: {trade_account.account_name}'
+            )
+            
+            messages.success(request, f'ส่งหลักฐานการต่ออายุเรียบร้อย รอการตรวจสอบจากทีมงาน')
             
         else:
-            # For new account, all fields are required
-            if not all([account_name, mt5_account_id, mt5_password, mt5_server, payment_slip]):
-                messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+            # For new account, only payment slip is required
+            # MT5 setup will be done after payment approval
+            if not payment_slip:
+                messages.error(request, 'กรุณาอัพโหลดสลิปโอนเงิน')
                 return redirect('payment')
             
-            # Create trade account with MT5 credentials
-            trade_account = UserTradeAccount.objects.create(
+            # Create subscription payment record WITHOUT trade_account
+            # Trade account will be created after payment approval and MT5 setup
+            payment = SubscriptionPayment.objects.create(
                 user=request.user,
-                account_name=account_name,
-                mt5_account_id=mt5_account_id,
-                mt5_password=mt5_password,  # TODO: Should encrypt this in production
-                broker_name='Pending Setup',
-                mt5_server=mt5_server,
+                trade_account=None,  # Will be linked after MT5 setup
                 subscription_package=package,
-                subscription_start=timezone.now(),
-                subscription_expiry=timezone.now() + timedelta(days=package.duration_days),
-                subscription_status='PENDING',
-                bot_status='PAUSED'
+                request_type='PURCHASE',
+                payment_amount=package.price,
+                payment_status='PENDING',
+                payment_method='Bank Transfer',
+                payment_slip=payment_slip,
+                payment_date=timezone.now(),
+                admin_notes='New purchase - MT5 setup pending'
             )
-        
-        # Create subscription payment record with trade_account
-        payment = SubscriptionPayment.objects.create(
-            user=request.user,
-            trade_account=trade_account,
-            subscription_package=package,
-            payment_amount=package.price,
-            payment_status='PENDING',
-            payment_method='Bank Transfer',
-            payment_slip=payment_slip,
-            payment_date=timezone.now(),
-            # Store renewal info in admin_notes for reference
-            admin_notes=f'Renewal for account: {trade_account.account_name}' if is_renewal else ''
-        )
-        
-        if is_renewal:
-            messages.success(request, f'ส่งหลักฐานการต่ออายุเรียบร้อย รอการตรวจสอบจากทีมงาน')
-        else:
-            messages.success(request, 'ส่งหลักฐานการชำระเงินเรียบร้อย')
+            
+            messages.success(request, 'ส่งหลักฐานการชำระเงินเรียบร้อย รอการตรวจสอบจากทีมงาน')
         
         return redirect('payment_pending', payment_id=payment.id)
     
@@ -930,6 +928,65 @@ def payment_reupload_view(request, payment_id):
         'package': payment.subscription_package
     }
     return render(request, 'subscription/payment_reupload.html', context)
+
+
+@login_required
+def setup_mt5_account_view(request, payment_id):
+    """MT5 Account Setup after payment approval"""
+    payment = get_object_or_404(
+        SubscriptionPayment,
+        id=payment_id,
+        user=request.user,
+        payment_status=PaymentStatus.COMPLETED,
+        trade_account__isnull=True,  # Only for new purchases without account
+        request_type=RequestType.PURCHASE
+    )
+    
+    if request.method == 'POST':
+        account_name = request.POST.get('account_name')
+        mt5_account_id = request.POST.get('mt5_account_id')
+        mt5_password = request.POST.get('mt5_password')
+        mt5_server = request.POST.get('mt5_server')
+        broker_name = request.POST.get('broker_name', 'Pending Setup')
+        
+        # Validate required fields
+        if not all([account_name, mt5_account_id, mt5_password, mt5_server]):
+            messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+            return redirect('setup_mt5_account', payment_id=payment.id)
+        
+        # Check if MT5 account already exists for this user
+        if UserTradeAccount.objects.filter(user=request.user, mt5_account_id=mt5_account_id).exists():
+            messages.error(request, 'บัญชี MT5 นี้ถูกใช้งานแล้ว')
+            return redirect('setup_mt5_account', payment_id=payment.id)
+        
+        # Create trade account with MT5 credentials
+        trade_account = UserTradeAccount.objects.create(
+            user=request.user,
+            account_name=account_name,
+            mt5_account_id=mt5_account_id,
+            mt5_password=mt5_password,  # TODO: Should encrypt this
+            broker_name=broker_name,
+            mt5_server=mt5_server,
+            subscription_package=payment.subscription_package,
+            subscription_start=timezone.now(),
+            subscription_expiry=timezone.now() + timedelta(days=payment.subscription_package.duration_days),
+            subscription_status=SubscriptionStatus.ACTIVE,  # Already paid!
+            bot_status=BotStatus.PAUSED
+        )
+        
+        # Link payment to account
+        payment.trade_account = trade_account
+        payment.admin_notes = f'MT5 setup completed - {account_name}'
+        payment.save()
+        
+        messages.success(request, 'ตั้งค่าบัญชีสำเร็จ! ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง')
+        return redirect('dashboard')
+    
+    context = {
+        'payment': payment,
+        'package': payment.subscription_package
+    }
+    return render(request, 'subscription/setup_mt5.html', context)
 
 
 # ============================================
@@ -1315,3 +1372,148 @@ def admin_dashboard_view(request):
     }
     
     return render(request, 'admin/dashboard.html', context)
+
+
+# ============================================
+# MT5 Account Management Views
+# ============================================
+
+@login_required
+def account_mt5_edit_view(request, account_id):
+    """Show current MT5 details and form to request changes"""
+    account = get_object_or_404(
+        UserTradeAccount,
+        id=account_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Check if there's already a pending MT5 reset request
+    pending_request = SubscriptionPayment.objects.filter(
+        user=request.user,
+        trade_account=account,
+        request_type=RequestType.MT5_RESET,
+        payment_status=PaymentStatus.PENDING
+    ).first()
+    
+    # Check rate limit
+    package = account.subscription_package
+    resets_remaining = package.mt5_reset_allowed_per_period - account.current_period_reset_count
+    can_reset = resets_remaining > 0
+    
+    # Check if bot is paused
+    bot_is_paused = account.bot_status == BotStatus.PAUSED
+    
+    # Check for open positions
+    open_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='OPEN',
+        is_active=True
+    ).count()
+    has_open_positions = open_positions > 0
+    
+    context = {
+        'account': account,
+        'pending_request': pending_request,
+        'resets_remaining': resets_remaining,
+        'can_reset': can_reset,
+        'bot_is_paused': bot_is_paused,
+        'has_open_positions': has_open_positions,
+        'open_positions_count': open_positions,
+    }
+    
+    return render(request, 'accounts/account_edit.html', context)
+
+
+@login_required
+def account_mt5_reset_submit_view(request, account_id):
+    """Handle MT5 reset form submission"""
+    if request.method != 'POST':
+        return redirect('account_mt5_edit', account_id=account_id)
+    
+    account = get_object_or_404(
+        UserTradeAccount,
+        id=account_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Validate bot is paused
+    if account.bot_status != BotStatus.PAUSED:
+        messages.error(request, 'กรุณาหยุด Bot ก่อนทำการแก้ไขข้อมูล MT5')
+        return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Check for open positions
+    open_positions = TradeTransaction.objects.filter(
+        trade_account=account,
+        position_status='OPEN',
+        is_active=True
+    ).count()
+    
+    if open_positions > 0:
+        messages.error(request, f'กรุณาปิดออเดอร์ทั้งหมด ({open_positions} ออเดอร์) ก่อนแก้ไขข้อมูล MT5')
+        return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Check rate limit
+    package = account.subscription_package
+    if account.current_period_reset_count >= package.mt5_reset_allowed_per_period:
+        messages.error(request, f'คุณใช้ quota การแก้ไข MT5 ครบแล้ว ({package.mt5_reset_allowed_per_period} ครั้งต่อรอบ)')
+        return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Check for existing pending request
+    pending_exists = SubscriptionPayment.objects.filter(
+        user=request.user,
+        trade_account=account,
+        request_type=RequestType.MT5_RESET,
+        payment_status=PaymentStatus.PENDING
+    ).exists()
+    
+    if pending_exists:
+        messages.warning(request, 'มีคำขอแก้ไข MT5 ที่รอดำเนินการอยู่แล้ว')
+        return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Get form data
+    new_account_name = request.POST.get('account_name')
+    new_mt5_account_id = request.POST.get('mt5_account_id')
+    new_mt5_password = request.POST.get('mt5_password')
+    new_mt5_server = request.POST.get('mt5_server')
+    new_broker_name = request.POST.get('broker_name', account.broker_name)
+    
+    # Validate required fields
+    if not all([new_account_name, new_mt5_account_id, new_mt5_password, new_mt5_server]):
+        messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+        return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Check if new MT5 account ID already exists (for other accounts)
+    if new_mt5_account_id != account.mt5_account_id:
+        if UserTradeAccount.objects.filter(
+            user=request.user,
+            mt5_account_id=new_mt5_account_id,
+            is_active=True
+        ).exclude(id=account.id).exists():
+            messages.error(request, 'บัญชี MT5 นี้ถูกใช้งานแล้ว')
+            return redirect('account_mt5_edit', account_id=account.id)
+    
+    # Create MT5 reset request (payment with amount=0)
+    new_mt5_data = {
+        'account_name': new_account_name,
+        'mt5_account_id': new_mt5_account_id,
+        'mt5_password': new_mt5_password,
+        'mt5_server': new_mt5_server,
+        'broker_name': new_broker_name,
+    }
+    
+    payment = SubscriptionPayment.objects.create(
+        user=request.user,
+        trade_account=account,
+        subscription_package=account.subscription_package,
+        request_type=RequestType.MT5_RESET,
+        payment_amount=Decimal('0.00'),
+        payment_status=PaymentStatus.PENDING,
+        payment_method='MT5 Reset Request',
+        new_mt5_data=new_mt5_data,
+        admin_notes=f'MT5 Reset Request - Old: {account.mt5_account_id}, New: {new_mt5_account_id}'
+    )
+    
+    messages.success(request, 'ส่งคำขอแก้ไขข้อมูล MT5 เรียบร้อย รอการตรวจสอบจากทีมงาน')
+    return redirect('payment_pending', payment_id=payment.id)

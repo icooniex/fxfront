@@ -104,9 +104,29 @@
                 <i class="bi bi-upload me-2"></i>อัพโหลดสลิปใหม่
             </a>
             {% elif payment.payment_status == 'COMPLETED' %}
-            <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
-                <i class="bi bi-house-door me-2"></i>ไปที่หน้าหลัก
-            </a>
+                {% if payment.request_type == 'PURCHASE' and not payment.trade_account %}
+                    <!-- New purchase - redirect to MT5 setup -->
+                    <a href="{% url 'setup_mt5_account' payment.id %}" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-gear me-2"></i>ตั้งค่าบัญชี MT5
+                    </a>
+                {% elif payment.request_type == 'MT5_RESET' %}
+                    <!-- MT5 reset completed -->
+                    <div class="alert mb-3" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 16px;">
+                        <p class="mb-0 text-success" style="font-size: 13px;">
+                            <i class="bi bi-check-circle me-1"></i>
+                            <strong>บัญชีถูกอัปเดตเรียบร้อยแล้ว</strong><br>
+                            กรุณา restart bot เพื่อเชื่อมต่อกับข้อมูลใหม่
+                        </p>
+                    </div>
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-house-door me-2"></i>ไปที่หน้าหลัก
+                    </a>
+                {% else %}
+                    <!-- Renewal or setup already completed -->
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-house-door me-2"></i>ไปที่หน้าหลัก
+                    </a>
+                {% endif %}
             {% else %}
             <a href="{% url 'dashboard' %}" class="btn btn-primary-blue btn-lg">
                 <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก

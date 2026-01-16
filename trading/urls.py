@@ -30,6 +30,11 @@ urlpatterns = [
     path('subscription/payment/submit/', views.payment_submit_view, name='payment_submit'),
     path('subscription/payment/<int:payment_id>/pending/', views.payment_pending_view, name='payment_pending'),
     path('subscription/payment/<int:payment_id>/reupload/', views.payment_reupload_view, name='payment_reupload'),
+    path('subscription/setup-mt5/<int:payment_id>/', views.setup_mt5_account_view, name='setup_mt5_account'),
+    
+    # Account MT5 Management
+    path('account/<int:account_id>/mt5/edit/', views.account_mt5_edit_view, name='account_mt5_edit'),
+    path('account/<int:account_id>/mt5/reset/submit/', views.account_mt5_reset_submit_view, name='account_mt5_reset_submit'),
     
     # Profile
     path('profile/', views.profile_view, name='profile'),

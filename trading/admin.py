@@ -24,11 +24,31 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(SubscriptionPackage)
 class SubscriptionPackageAdmin(admin.ModelAdmin):
-    list_display = ['name', 'duration_days', 'price_display', 'is_active', 'created_at']
-    list_filter = ['is_active', 'duration_days']
+    list_display = ['name', 'duration_days', 'price_display', 'max_accounts', 'mt5_reset_allowed_per_period', 'is_active', 'created_at']
+    list_filter = ['is_active', 'duration_days', 'max_accounts']
     search_fields = ['name', 'description']
     readonly_fields = ['created_at', 'updated_at']
     ordering = ['price']
+
+    fieldsets = (
+        ('Package Details', {
+            'fields': ('name', 'duration_days', 'price', 'description', 'is_active')
+        }),
+        ('Account Limits', {
+            'fields': ('max_accounts', 'max_symbols', 'min_lot_size', 'max_lot_size')
+        }),
+        ('Feature Flags', {
+            'fields': ('allow_news_filter', 'allow_dd_protection', 'allow_dynamic_position_sizing')
+        }),
+        ('MT5 Reset Configuration', {
+            'fields': ('mt5_reset_allowed_per_period',),
+            'description': 'Number of MT5 account resets allowed per subscription period'
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
     def price_display(self, obj):
         return f"฿{obj.price:,.2f}"
@@ -64,6 +84,10 @@ class UserTradeAccountAdmin(admin.ModelAdmin):
         }),
         ('Bot Configuration', {
             'fields': ('bot_status', 'active_bot', 'bot_activated_at', 'trade_config')
+        }),
+        ('MT5 Reset Tracking', {
+            'fields': ('current_period_reset_count', 'last_mt5_reset_at'),
+            'classes': ('collapse',)
         }),
         ('Drawdown Protection', {
             'fields': ('dd_blocked', 'dd_block_reason', 'dd_blocked_at'),
@@ -141,30 +165,36 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
         'user',
         'trade_account',
         'subscription_package',
+        'request_type_display',
         'amount_display',
         'payment_status',
         'payment_method',
         'payment_date',
         'slip_preview'
     ]
-    list_filter = ['payment_status', 'payment_method', 'payment_date', 'is_active']
+    list_filter = ['payment_status', 'request_type', 'payment_method', 'payment_date', 'is_active']
     search_fields = [
         'user__username',
         'trade_account__account_name',
         'transaction_reference',
         'subscription_package__name'
     ]
-    readonly_fields = ['created_at', 'updated_at', 'slip_preview']
+    readonly_fields = ['created_at', 'updated_at', 'slip_preview', 'mt5_data_comparison']
     raw_id_fields = ['user', 'trade_account', 'subscription_package', 'verified_by']
     date_hierarchy = 'payment_date'
     ordering = ['-payment_date']
 
     fieldsets = (
         ('Payment Information', {
-            'fields': ('user', 'trade_account', 'subscription_package', 'payment_amount', 'payment_status')
+            'fields': ('user', 'trade_account', 'subscription_package', 'request_type', 'payment_amount', 'payment_status')
         }),
         ('Payment Details', {
             'fields': ('payment_method', 'transaction_reference', 'payment_date', 'payment_slip', 'slip_preview')
+        }),
+        ('MT5 Reset Data', {
+            'fields': ('new_mt5_data', 'mt5_data_comparison'),
+            'classes': ('collapse',),
+            'description': 'Only applicable for MT5_RESET requests'
         }),
         ('Verification', {
             'fields': ('admin_notes', 'verified_by', 'verified_at')
@@ -174,6 +204,20 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def request_type_display(self, obj):
+        colors = {
+            'PURCHASE': '#3b82f6',  # blue
+            'RENEWAL': '#22c55e',   # green
+            'MT5_RESET': '#f59e0b'  # orange
+        }
+        color = colors.get(obj.request_type, '#6b7280')
+        return format_html(
+            '<span style="background: {}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">{}</span>',
+            color,
+            obj.get_request_type_display()
+        )
+    request_type_display.short_description = 'Request Type'
 
     def amount_display(self, obj):
         color = 'green' if obj.payment_status == 'COMPLETED' else 'orange'
@@ -194,6 +238,34 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
             )
         return "No slip uploaded"
     slip_preview.short_description = 'Payment Slip Preview'
+    
+    def mt5_data_comparison(self, obj):
+        """Show comparison between old and new MT5 data for reset requests"""
+        if obj.request_type != 'MT5_RESET' or not obj.new_mt5_data or not obj.trade_account:
+            return "N/A"
+        
+        account = obj.trade_account
+        new_data = obj.new_mt5_data
+        
+        comparison = '<table style="width: 100%; border-collapse: collapse;">'
+        comparison += '<tr style="background: #f3f4f6;"><th style="padding: 8px; text-align: left;">Field</th><th style="padding: 8px; text-align: left;">Current</th><th style="padding: 8px; text-align: left;">New</th></tr>'
+        
+        fields = [
+            ('Account Name', account.account_name, new_data.get('account_name', '')),
+            ('MT5 Account ID', account.mt5_account_id, new_data.get('mt5_account_id', '')),
+            ('MT5 Password', '******', '******' if new_data.get('mt5_password') else ''),
+            ('MT5 Server', account.mt5_server, new_data.get('mt5_server', '')),
+            ('Broker Name', account.broker_name, new_data.get('broker_name', '')),
+        ]
+        
+        for field_name, old_value, new_value in fields:
+            changed = old_value != new_value
+            row_style = 'background: #fef3c7;' if changed else ''
+            comparison += f'<tr style="{row_style}"><td style="padding: 8px; font-weight: 600;">{field_name}</td><td style="padding: 8px;">{old_value}</td><td style="padding: 8px; color: #3b82f6; font-weight: 600;">{new_value}</td></tr>'
+        
+        comparison += '</table>'
+        return format_html(comparison)
+    mt5_data_comparison.short_description = 'MT5 Data Comparison'
 
 
 @admin.register(BotAPIKey)

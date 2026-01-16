@@ -145,51 +145,31 @@
                            id="account_name" 
                            name="account_name" 
                            placeholder="ตั้งชื่อบัญชีเทรดของคุณ"
-                           required>
-                    <small class="text-muted">เช่น: Bot Account 1, My Trading</small>
+                           disabled>
+                    <small class="text-muted">คุณจะสามารถตั้งชื่อบัญชีได้หลังจากการชำระเงินสำเร็จ</small>
                 </div>
                 {% endif %}
             </div>
 
             {% if not renew_account %}
-            <!-- MT5 Account Info Section -->
+            <!-- Information Section -->
             <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
-                <h5 class="mb-2">ข้อมูลบัญชี MT5</h5>
-                <p class="text-muted mb-3" style="font-size: 13px;">
-                    <i class="bi bi-info-circle me-1"></i>ใช้สำหรับ Setup Bot ให้กับบัญชีของคุณ
-                </p>
-
-                <div class="mb-3">
-                    <label for="mt5_account_id" class="form-label">MT5 Account ID</label>
-                    <input type="text" 
-                           class="form-control form-control-glass" 
-                           id="mt5_account_id" 
-                           name="mt5_account_id" 
-                           placeholder="กรอกหมายเลขบัญชี MT5"
-                           required>
-                    <small class="text-muted">หมายเลขบัญชี MT5 ของคุณ (ตัวเลข)</small>
-                </div>
-
-                <div class="mb-3">
-                    <label for="mt5_password" class="form-label">MT5 Password</label>
-                    <input type="text" 
-                           class="form-control form-control-glass" 
-                           id="mt5_password" 
-                           name="mt5_password" 
-                           placeholder="กรอกรหัสผ่าน MT5"
-                           required>
-                    <small class="text-muted">รหัสผ่านบัญชี MT5 สำหรับ Setup Bot</small>
-                </div>
-
-                <div class="mb-0">
-                    <label for="mt5_server" class="form-label">MT5 Server</label>
-                    <input type="text" 
-                           class="form-control form-control-glass" 
-                           id="mt5_server" 
-                           name="mt5_server" 
-                           placeholder="กรอกชื่อเซิร์ฟเวอร์ MT5"
-                           required>
-                    <small class="text-muted">เช่น: Exness-MT5Trial7, XMGlobal-Real 5</small>
+                <div class="d-flex align-items-start">
+                    <div class="me-3">
+                        <i class="bi bi-info-circle" style="font-size: 24px; color: var(--primary-blue);"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-2" style="font-weight: 600; color: var(--primary-blue);">ขั้นตอนต่อไป</h6>
+                        <p class="text-muted mb-2" style="font-size: 13px;">
+                            หลังจากตรวจสอบการชำระเงินเรียบร้อยแล้ว ทีมงานจะแจ้งให้คุณทราบผ่าน LINE หรือ SMS พร้อมลิงก์สำหรับตั้งค่าบัญชี MT5
+                        </p>
+                        <ul class="text-muted mb-0" style="font-size: 13px; padding-left: 20px;">
+                            <li>ตรวจสอบการชำระเงิน (5-15 นาที)</li>
+                            <li>กรอกข้อมูล MT5 Account (Account ID, Password, Server)</li>
+                            <li>ทีมงานติดตั้ง Bot ให้ (ภายใน 24 ชั่วโมง)</li>
+                            <li>เริ่มเทรดได้ทันที</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             {% endif %}

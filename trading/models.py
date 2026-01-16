@@ -47,6 +47,12 @@ class PaymentStatus(models.TextChoices):
     REFUNDED = 'REFUNDED', 'Refunded'
 
 
+class RequestType(models.TextChoices):
+    PURCHASE = 'PURCHASE', 'New Purchase'
+    RENEWAL = 'RENEWAL', 'Renewal'
+    MT5_RESET = 'MT5_RESET', 'MT5 Account Reset'
+
+
 class BotStatus(models.TextChoices):
     ACTIVE = 'ACTIVE', 'Active'
     PAUSED = 'PAUSED', 'Paused'
@@ -129,6 +135,18 @@ class SubscriptionPackage(TimeStampedModel):
     allow_dynamic_position_sizing = models.BooleanField(
         default=False,
         help_text="Allow dynamic position sizing based on risk percentage"
+    )
+    
+    # Multi-account support
+    max_accounts = models.PositiveIntegerField(
+        default=1,
+        help_text="Maximum number of trading accounts allowed per package (0 = unlimited)"
+    )
+    
+    # MT5 reset rate limit
+    mt5_reset_allowed_per_period = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of MT5 account resets allowed per subscription period"
     )
 
     class Meta:
@@ -240,6 +258,17 @@ class UserTradeAccount(TimeStampedModel):
         null=True,
         blank=True,
         help_text="When the bot was blocked by DD protection"
+    )
+    
+    # MT5 reset tracking
+    current_period_reset_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of MT5 resets in current subscription period"
+    )
+    last_mt5_reset_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time MT5 account details were reset"
     )
 
     class Meta:
@@ -365,12 +394,30 @@ class SubscriptionPayment(TimeStampedModel):
     trade_account = models.ForeignKey(
         UserTradeAccount,
         on_delete=models.CASCADE,
-        related_name='payments'
+        related_name='payments',
+        null=True,
+        blank=True,
+        help_text="Trade account (null for initial purchase before MT5 setup)"
     )
     subscription_package = models.ForeignKey(
         SubscriptionPackage,
         on_delete=models.PROTECT,
         related_name='payments'
+    )
+    
+    # Request type
+    request_type = models.CharField(
+        max_length=20,
+        choices=RequestType.choices,
+        default=RequestType.PURCHASE,
+        help_text="Type of request: new purchase, renewal, or MT5 reset"
+    )
+    
+    # New MT5 data for reset requests
+    new_mt5_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="New MT5 account details for reset requests (account_name, mt5_account_id, mt5_password, mt5_server, broker_name)"
     )
     
     # Payment details
@@ -677,4 +724,59 @@ class BacktestResult(TimeStampedModel):
 
     def __str__(self):
         return f"{self.bot_strategy.name} - {self.run_date.strftime('%Y-%m-%d')} ({'Latest' if self.is_latest else 'Historical'})"
+
+
+# User Package Quota Model
+class UserPackageQuota(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='package_quotas')
+    subscription_package = models.ForeignKey(
+        SubscriptionPackage,
+        on_delete=models.PROTECT,
+        related_name='user_quotas'
+    )
+    
+    # Quota tracking
+    quota_total = models.PositiveIntegerField(
+        help_text="Total number of accounts allowed by this quota"
+    )
+    accounts_used = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of accounts currently using this quota"
+    )
+    
+    # Validity period
+    start_date = models.DateTimeField(
+        help_text="When this quota becomes active"
+    )
+    expiry_date = models.DateTimeField(
+        db_index=True,
+        help_text="When this quota expires"
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=SubscriptionStatus.choices,
+        default=SubscriptionStatus.ACTIVE,
+        db_index=True
+    )
+    
+    class Meta:
+        verbose_name = 'User Package Quota'
+        verbose_name_plural = 'User Package Quotas'
+        ordering = ['-expiry_date']
+        indexes = [
+            models.Index(fields=['user', 'status', '-expiry_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.subscription_package.name} ({self.accounts_used}/{self.quota_total})"
+    
+    def has_available_slots(self):
+        """Check if there are available account slots"""
+        return self.accounts_used < self.quota_total
+    
+    def get_remaining_slots(self):
+        """Get number of remaining account slots"""
+        return max(0, self.quota_total - self.accounts_used)
 

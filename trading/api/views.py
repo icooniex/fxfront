@@ -194,6 +194,49 @@ def update_strategy_config_version_in_redis(strategy_id, version=None):
         return 0
 
 
+def clear_redis_keys_for_account(mt5_account_id):
+    """
+    Clear all Redis keys associated with a specific MT5 account.
+    Used when MT5 account ID changes during account reset.
+    
+    Args:
+        mt5_account_id: MT5 account ID to clear keys for
+        
+    Returns:
+        bool: Success status
+    """
+    if redis_client is None:
+        return False
+    
+    try:
+        # Delete all bot-related keys for this account
+        keys_to_delete = [
+            f"bot:heartbeat:{mt5_account_id}",
+            f"server:heartbeat:{mt5_account_id}",
+            f"bot:trade_config:{mt5_account_id}"
+        ]
+        
+        deleted_count = 0
+        for key in keys_to_delete:
+            if redis_client.delete(key):
+                deleted_count += 1
+        
+        logger.info(f"✅ Cleared {deleted_count} Redis keys for account {mt5_account_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to clear Redis keys for account {mt5_account_id}: {e}")
+        return False
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+    except Exception as e:
+        logger.error(f"❌ Failed to update strategy config version in Redis: {e}")
+        return 0
+
+
 # =============================================================================
 # API Views
 # =============================================================================

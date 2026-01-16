@@ -1,0 +1,226 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}แก้ไขบัญชี MT5 - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <a href="{% url 'profile' %}" class="btn btn-glass btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i> กลับ
+            </a>
+            <h1 class="mb-1">แก้ไขบัญชี MT5</h1>
+            <p class="text-secondary mb-0" style="font-size: 14px;">{{ account.account_name }}</p>
+        </div>
+
+        <!-- Pending Request Alert -->
+        {% if pending_request %}
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 20px; background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2);">
+            <div class="d-flex align-items-start">
+                <div class="me-3">
+                    <i class="bi bi-clock-history" style="font-size: 28px; color: #ffc107;"></i>
+                </div>
+                <div>
+                    <h6 class="mb-2" style="font-weight: 600; color: #ffc107;">มีคำขอแก้ไขรออนุมัติ</h6>
+                    <p class="mb-2" style="font-size: 13px; color: #ffc107;">
+                        คุณมีคำขอแก้ไขข้อมูล MT5 ที่รอทีมงานตรวจสอบอยู่แล้ว
+                    </p>
+                    <a href="{% url 'payment_pending' pending_request.id %}" class="btn btn-glass btn-sm">
+                        <i class="bi bi-eye me-1"></i>ตรวจสอบสถานะ
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Current MT5 Information -->
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.2s; padding: 24px;">
+            <h5 class="mb-3">ข้อมูล MT5 ปัจจุบัน</h5>
+            
+            <div class="mb-3">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">ชื่อบัญชี</span>
+                <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ account.account_name }}</p>
+            </div>
+
+            <div class="mb-3">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">MT5 Account ID</span>
+                <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ account.mt5_account_id }}</p>
+            </div>
+
+            <div class="mb-3">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">MT5 Server</span>
+                <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ account.mt5_server }}</p>
+            </div>
+
+            <div class="mb-3">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">โบรกเกอร์</span>
+                <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ account.broker_name }}</p>
+            </div>
+
+            <div class="divider" style="margin: 16px 0;"></div>
+
+            <div class="mb-0">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">แก้ไขได้อีก</span>
+                <p class="mb-0">
+                    {% if resets_remaining > 0 %}
+                    <span class="badge-glass badge-active" style="font-size: 14px;">{{ resets_remaining }} ครั้ง</span>
+                    <span class="text-muted" style="font-size: 12px;"> ในรอบนี้</span>
+                    {% else %}
+                    <span class="badge-glass badge-down" style="font-size: 14px;">ใช้ครบแล้ว</span>
+                    <span class="text-muted" style="font-size: 12px;"> ({{ account.subscription_package.mt5_reset_allowed_per_period }} ครั้ง/รอบ)</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Warnings / Requirements -->
+        {% if not bot_is_paused or has_open_positions or not can_reset %}
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.3s; padding: 20px; background: rgba(255, 68, 68, 0.05); border: 1px solid rgba(255, 68, 68, 0.2);">
+            <h6 class="mb-3" style="font-weight: 600; color: var(--loss-red);">
+                <i class="bi bi-exclamation-triangle me-2"></i>ข้อกำหนดก่อนแก้ไข
+            </h6>
+            <ul class="mb-0" style="font-size: 13px; color: var(--loss-red); padding-left: 20px;">
+                {% if not bot_is_paused %}
+                <li class="mb-2">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>Bot ยังทำงานอยู่</strong> - กรุณาหยุด Bot ก่อน
+                    <a href="{% url 'account_detail' account.id %}" class="text-primary-blue ms-2">
+                        ไปหยุด Bot
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_open_positions %}
+                <li class="mb-2">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>มีออเดอร์เปิดอยู่ {{ open_positions_count }} ออเดอร์</strong> - กรุณาปิดออเดอร์ทั้งหมดก่อน
+                </li>
+                {% endif %}
+                {% if not can_reset %}
+                <li class="mb-0">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>ใช้ quota การแก้ไขครบแล้ว</strong> - กรุณาต่ออายุเพื่อรับ quota ใหม่
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Edit Form -->
+        {% if not pending_request %}
+        <form method="post" action="{% url 'account_mt5_reset_submit' account.id %}">
+            {% csrf_token %}
+
+            <!-- New MT5 Information -->
+            <div class="glass-card fade-in mb-3" style="animation-delay: 0.4s; padding: 24px;">
+                <h5 class="mb-2">ข้อมูล MT5 ใหม่</h5>
+                <p class="text-muted mb-3" style="font-size: 13px;">
+                    <i class="bi bi-info-circle me-1"></i>กรอกข้อมูล MT5 ใหม่ที่ต้องการเปลี่ยน
+                </p>
+
+                <div class="mb-3">
+                    <label for="account_name" class="form-label">ชื่อบัญชี</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="account_name" 
+                           name="account_name" 
+                           value="{{ account.account_name }}"
+                           required
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">ชื่อบัญชีเพื่อแยกแยะบัญชีต่างๆ</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_account_id" class="form-label">MT5 Account ID</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_account_id" 
+                           name="mt5_account_id" 
+                           value="{{ account.mt5_account_id }}"
+                           required
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">หมายเลขบัญชี MT5 ใหม่</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_password" class="form-label">MT5 Password</label>
+                    <input type="password" 
+                           class="form-control form-control-glass" 
+                           id="mt5_password" 
+                           name="mt5_password" 
+                           placeholder="กรอกรหัสผ่าน MT5 ใหม่"
+                           required
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">รหัสผ่านบัญชี MT5</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_server" class="form-label">MT5 Server</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_server" 
+                           name="mt5_server" 
+                           value="{{ account.mt5_server }}"
+                           required
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">เช่น: Exness-MT5Trial7</small>
+                </div>
+
+                <div class="mb-0">
+                    <label for="broker_name" class="form-label">ชื่อโบรกเกอร์ (ไม่บังคับ)</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="broker_name" 
+                           name="broker_name" 
+                           value="{{ account.broker_name }}"
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">เช่น: Exness, XM</small>
+                </div>
+            </div>
+
+            <!-- Important Notes -->
+            <div class="glass-card fade-in mb-3" style="animation-delay: 0.5s; padding: 20px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+                <h6 class="mb-2" style="font-weight: 600; color: var(--primary-blue);">
+                    <i class="bi bi-info-circle me-2"></i>ข้อมูลสำคัญ
+                </h6>
+                <ul class="mb-0" style="font-size: 13px; color: var(--primary-blue); padding-left: 20px;">
+                    <li class="mb-2">ข้อมูลใหม่จะถูกใช้หลัง admin อนุมัติเท่านั้น</li>
+                    <li class="mb-2">ข้อมูลเดิมยังคงใช้งานได้จนกว่าจะอนุมัติ</li>
+                    <li class="mb-2">หลังอนุมัติ คุณต้อง restart bot ด้วยตัวเอง</li>
+                    <li class="mb-0">ทีมงานจะติดตั้ง bot ใหม่ให้อัตโนมัติ</li>
+                </ul>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="glass-card fade-in" style="animation-delay: 0.6s; padding: 24px;">
+                <div class="d-grid">
+                    <button type="submit" 
+                            class="btn btn-primary-blue btn-lg"
+                            {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                        <i class="bi bi-send me-2"></i>ส่งคำขอแก้ไข
+                    </button>
+                </div>
+                {% if can_reset and bot_is_paused and not has_open_positions %}
+                <p class="text-center text-muted mt-3 mb-0" style="font-size: 12px;">
+                    คุณจะได้รับการแจ้งเตือนเมื่อทีมงานอนุมัติคำขอ
+                </p>
+                {% endif %}
+            </div>
+        </form>
+        {% endif %}
+
+        <!-- Help Info -->
+        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.7s;">
+            <p class="text-muted" style="font-size: 13px;">
+                <i class="bi bi-headset me-1"></i>
+                ต้องการความช่วยเหลือ? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}

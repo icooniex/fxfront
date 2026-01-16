@@ -1,0 +1,147 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}ตั้งค่าบัญชี MT5 - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-4 fade-in">
+            <a href="{% url 'payment_pending' payment.id %}" class="btn btn-glass btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i> กลับ
+            </a>
+            <h1 class="mb-1">ตั้งค่าบัญชี MT5</h1>
+            <p class="text-secondary mb-0" style="font-size: 14px;">กรอกข้อมูลบัญชี MT5 เพื่อเริ่มใช้งาน</p>
+        </div>
+
+        <!-- Success Message -->
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 20px;">
+            <div class="d-flex align-items-start">
+                <div class="me-3">
+                    <i class="bi bi-check-circle-fill" style="font-size: 32px; color: var(--profit-green);"></i>
+                </div>
+                <div>
+                    <h5 class="mb-2" style="font-weight: 600; color: var(--profit-green);">การชำระเงินสำเร็จ</h5>
+                    <p class="text-muted mb-2" style="font-size: 13px;">
+                        แพ็คเกจ: <strong>{{ package.name }}</strong> ({{ package.duration_days }} วัน)
+                    </p>
+                    <p class="text-muted mb-0" style="font-size: 13px;">
+                        ยอดชำระ: <strong class="text-primary-blue">฿{{ payment.payment_amount|floatformat:0 }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MT5 Setup Form -->
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Account Name -->
+            <div class="glass-card fade-in mb-3" style="animation-delay: 0.2s; padding: 24px;">
+                <h5 class="mb-3">ชื่อบัญชีเทรด</h5>
+                
+                <div class="mb-0">
+                    <label for="account_name" class="form-label">ตั้งชื่อบัญชี</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="account_name" 
+                           name="account_name" 
+                           placeholder="เช่น: Bot Account 1, My Trading"
+                           required>
+                    <small class="text-muted">ใช้สำหรับแยกแยะบัญชีต่างๆ ของคุณ</small>
+                </div>
+            </div>
+
+            <!-- MT5 Information -->
+            <div class="glass-card fade-in mb-3" style="animation-delay: 0.3s; padding: 24px;">
+                <h5 class="mb-2">ข้อมูลบัญชี MT5</h5>
+                <p class="text-muted mb-3" style="font-size: 13px;">
+                    <i class="bi bi-info-circle me-1"></i>ข้อมูลนี้จะใช้สำหรับเชื่อมต่อ Bot กับบัญชี MT5 ของคุณ
+                </p>
+
+                <div class="mb-3">
+                    <label for="mt5_account_id" class="form-label">MT5 Account ID</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_account_id" 
+                           name="mt5_account_id" 
+                           placeholder="กรอกหมายเลขบัญชี MT5"
+                           required>
+                    <small class="text-muted">หมายเลขบัญชี MT5 ของคุณ (ตัวเลข)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_password" class="form-label">MT5 Password</label>
+                    <input type="password" 
+                           class="form-control form-control-glass" 
+                           id="mt5_password" 
+                           name="mt5_password" 
+                           placeholder="กรอกรหัสผ่าน MT5"
+                           required>
+                    <small class="text-muted">รหัสผ่านบัญชี MT5 สำหรับให้ Bot เชื่อมต่อ</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="mt5_server" class="form-label">MT5 Server</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="mt5_server" 
+                           name="mt5_server" 
+                           placeholder="กรอกชื่อเซิร์ฟเวอร์ MT5"
+                           required>
+                    <small class="text-muted">เช่น: Exness-MT5Trial7, XMGlobal-Real 5</small>
+                </div>
+
+                <div class="mb-0">
+                    <label for="broker_name" class="form-label">ชื่อโบรกเกอร์ (ไม่บังคับ)</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="broker_name" 
+                           name="broker_name" 
+                           placeholder="เช่น: Exness, XM">
+                    <small class="text-muted">ชื่อโบรกเกอร์ที่คุณใช้งาน</small>
+                </div>
+            </div>
+
+            <!-- Security Note -->
+            <div class="glass-card fade-in mb-3" style="animation-delay: 0.4s; padding: 20px; background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2);">
+                <div class="d-flex align-items-start">
+                    <div class="me-2">
+                        <i class="bi bi-shield-lock" style="font-size: 20px; color: #ffc107;"></i>
+                    </div>
+                    <div>
+                        <p class="mb-0" style="font-size: 13px; color: #ffc107;">
+                            <strong>ความปลอดภัย:</strong> ข้อมูลของคุณจะถูกเข้ารหัสและจัดเก็บอย่างปลอดภัย ใช้เพื่อการเชื่อมต่อ Bot เท่านั้น
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="glass-card fade-in" style="animation-delay: 0.5s; padding: 24px;">
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-blue btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>เริ่มใช้งาน
+                    </button>
+                </div>
+                <p class="text-center text-muted mt-3 mb-0" style="font-size: 12px;">
+                    หลังจากตั้งค่าสำเร็จ ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง
+                </p>
+            </div>
+        </form>
+
+        <!-- Help Info -->
+        <div class="text-center mt-4 mb-4 fade-in" style="animation-delay: 0.6s;">
+            <p class="text-muted" style="font-size: 13px;">
+                <i class="bi bi-headset me-1"></i>
+                ต้องการความช่วยเหลือ? <a href="#" class="text-primary-blue">ติดต่อทีมงาน</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}
