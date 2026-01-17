@@ -1351,6 +1351,9 @@ def backtest_strategy_dashboard(request, strategy_id):
     if backtest:
         # Calculate profit factor
         profit_factor = 0
+        initial_capital = 0
+        profit_percent = 0
+        
         if backtest.raw_data and 'trades' in backtest.raw_data:
             trades = backtest.raw_data['trades']
             winning_pnl = sum([t['pnl'] for t in trades if t['pnl'] > 0])
@@ -1358,10 +1361,17 @@ def backtest_strategy_dashboard(request, strategy_id):
             
             if losing_pnl > 0:
                 profit_factor = round(winning_pnl / losing_pnl, 2)
+            
+            # Calculate initial capital and profit percentage
+            if len(trades) > 0:
+                initial_capital = float(trades[0]['cumulative']) - float(trades[0]['pnl'])
+                if initial_capital > 0:
+                    profit_percent = round((float(backtest.total_profit) / initial_capital) * 100, 2)
         
         # Add metrics to context
         context.update({
             'profit_factor': profit_factor,
+            'profit_percent': profit_percent,
             'trades_data': backtest.raw_data.get('trades', []) if backtest.raw_data else [],
         })
     

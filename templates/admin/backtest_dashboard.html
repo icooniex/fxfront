@@ -63,33 +63,35 @@
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 15px;
-        margin-bottom: 30px;
+        gap: 12px;
+        margin-bottom: 20px;
     }
     
     .metric-card {
         background: var(--bg-glass);
         border: 1px solid var(--border-glass);
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: 8px;
+        padding: 12px 12px;
         text-align: center;
     }
     
     .metric-label {
-        font-size: 11px;
+        font-size: 9px;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        margin-bottom: 3px;
+        font-weight: 400;
     }
     
     .metric-value {
-        font-size: 28px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
     }
     
     .metric-value.profit {
-        color: #00ffaa;
+        color: #158bf9;
     }
     
     .metric-value.loss {
@@ -97,7 +99,7 @@
     }
     
     .metric-value.neutral {
-        color: #4dd0e1;
+        color: #158bf9;
     }
     
     .chart-container {
@@ -160,7 +162,7 @@
     }
     
     .text-profit {
-        color: #00ffaa;
+        color: #158bf9;
         font-weight: 600;
     }
     
@@ -170,8 +172,8 @@
     }
     
     .badge-tp {
-        background: rgba(0, 255, 170, 0.15);
-        color: #00ffaa;
+        background: rgba(21, 139, 249, 0.15);
+        color: #158bf9;
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 10px;
@@ -188,8 +190,8 @@
     }
     
     .badge-long {
-        background: rgba(77, 208, 225, 0.15);
-        color: #4dd0e1;
+        background: rgba(21, 139, 249, 0.15);
+        color: #158bf9;
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 10px;
@@ -197,8 +199,8 @@
     }
     
     .badge-short {
-        background: rgba(255, 167, 38, 0.15);
-        color: #ffa726;
+        background: rgba(255, 68, 68, 0.15);
+        color: #ff4444;
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 10px;
@@ -298,8 +300,8 @@
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-label">Net Profit</div>
-            <div class="metric-value {% if backtest.total_profit > 0 %}profit{% elif backtest.total_profit < 0 %}loss{% else %}neutral{% endif %}">
-                {% if backtest.total_profit > 0 %}+{% endif %}${{ backtest.total_profit|floatformat:0|intcomma }}
+            <div class="metric-value {% if profit_percent > 0 %}profit{% elif profit_percent < 0 %}loss{% else %}neutral{% endif %}">
+                {% if profit_percent > 0 %}+{% endif %}{{ profit_percent }}%
             </div>
         </div>
         
@@ -312,7 +314,7 @@
         
         <div class="metric-card">
             <div class="metric-label">Win Rate</div>
-            <div class="metric-value neutral">
+            <div class="metric-value" style="color: var(--text-primary);">
                 {{ backtest.win_rate }}%
             </div>
         </div>
@@ -362,6 +364,7 @@
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>Symbol</th>
                     <th>Entry Time</th>
                     <th>Exit Time</th>
                     <th>Direction</th>
@@ -406,10 +409,17 @@
 <script>
 // Trades data from Django
 const tradesData = {{ trades_data|safe }};
+const strategySymbols = {{ selected_strategy.allowed_symbols|safe }};
+const fallbackSymbol = strategySymbols && strategySymbols.length > 0 ? strategySymbols[0] : 'N/A';
+
+// Helper function to get symbol from trade or fallback
+function getTradeSymbol(trade) {
+    return trade.symbol || fallbackSymbol;
+}
 
 // Pagination settings
 let currentPage = 1;
-const rowsPerPage = 50;
+const rowsPerPage = 20;
 
 // Chart instances
 let tradeLogChart = null;
@@ -509,8 +519,8 @@ function initTradeLogChart(chartData) {
                 {
                     label: 'Winning Entry',
                     data: winningEntries,
-                    backgroundColor: 'rgba(0, 255, 170, 0.6)',
-                    borderColor: '#00ffaa',
+                    backgroundColor: 'rgba(21, 139, 249, 0.6)',
+                    borderColor: '#158bf9',
                     borderWidth: 2,
                     pointRadius: 6,
                     pointStyle: 'triangle',
@@ -531,8 +541,8 @@ function initTradeLogChart(chartData) {
                 {
                     label: 'Winning Exit',
                     data: winningExits,
-                    backgroundColor: 'rgba(0, 255, 170, 0.4)',
-                    borderColor: '#00ffaa',
+                    backgroundColor: 'rgba(21, 139, 249, 0.4)',
+                    borderColor: '#158bf9',
                     borderWidth: 1,
                     pointRadius: 4,
                     pointStyle: 'circle',
@@ -631,20 +641,37 @@ function initEquityCurveChart(chartData) {
             datasets: [{
                 label: 'Equity',
                 data: chartData.equityCurve,
-                borderColor: '#4dd0e1',
+                borderColor: '#158bf9',
+                segment: {
+                    borderColor: ctx => {
+                        const value = ctx.p1.parsed.y;
+                        return value >= initialValue ? '#158bf9' : '#ff4444';
+                    }
+                },
                 backgroundColor: function(context) {
-                    const ctx = context.chart.ctx;
-                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, 'rgba(77, 208, 225, 0.3)');
-                    gradient.addColorStop(1, 'rgba(77, 208, 225, 0.0)');
+                    const chart = context.chart;
+                    const {ctx, chartArea} = chart;
+                    
+                    if (!chartArea) {
+                        return null;
+                    }
+                    
+                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    gradient.addColorStop(0, 'rgba(21, 139, 249, 0.3)');
+                    gradient.addColorStop(1, 'rgba(255, 68, 68, 0.3)');
+                    
                     return gradient;
                 },
                 borderWidth: 2,
-                fill: true,
+                fill: {
+                    target: {value: initialValue},
+                    above: 'rgba(21, 139, 249, 0.2)',
+                    below: 'rgba(255, 68, 68, 0.2)'
+                },
                 tension: 0.1,
                 pointRadius: 0,
                 pointHoverRadius: 5,
-                pointHoverBackgroundColor: '#4dd0e1'
+                pointHoverBackgroundColor: '#158bf9'
             }]
         },
         options: {
@@ -729,6 +756,7 @@ function renderTradesTable() {
         
         row.innerHTML = `
             <td>${i + 1}</td>
+            <td>${getTradeSymbol(trade)}</td>
             <td>${formatDateTime(trade.entry_time)}</td>
             <td>${formatDateTime(trade.exit_time)}</td>
             <td><span class="${directionBadgeClass}">${trade.direction}</span></td>
