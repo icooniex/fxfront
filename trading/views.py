@@ -1315,3 +1315,54 @@ def admin_dashboard_view(request):
     }
     
     return render(request, 'admin/dashboard.html', context)
+
+
+@login_required
+def backtest_strategy_dashboard(request, strategy_id):
+    """
+    Backtest Dashboard for viewing backtest results of a specific strategy.
+    Shows equity curve and trade log charts with synchronized timeline.
+    Only accessible by staff users.
+    """
+    # Check if user is admin
+    if not request.user.is_staff:
+        messages.error(request, 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้')
+        return redirect('dashboard')
+    
+    # Get all strategies for sidebar navigation
+    all_strategies = BotStrategy.objects.all().order_by('name')
+    
+    # Get the selected strategy
+    strategy = get_object_or_404(BotStrategy, id=strategy_id)
+    
+    # Get the latest backtest result for this strategy
+    backtest = BacktestResult.objects.filter(
+        bot_strategy=strategy
+    ).select_related('bot_strategy').order_by('-run_date').first()
+    
+    # Prepare context
+    context = {
+        'all_strategies': all_strategies,
+        'selected_strategy': strategy,
+        'backtest': backtest,
+    }
+    
+    # If backtest exists, prepare data for charts
+    if backtest:
+        # Calculate profit factor
+        profit_factor = 0
+        if backtest.raw_data and 'trades' in backtest.raw_data:
+            trades = backtest.raw_data['trades']
+            winning_pnl = sum([t['pnl'] for t in trades if t['pnl'] > 0])
+            losing_pnl = abs(sum([t['pnl'] for t in trades if t['pnl'] < 0]))
+            
+            if losing_pnl > 0:
+                profit_factor = round(winning_pnl / losing_pnl, 2)
+        
+        # Add metrics to context
+        context.update({
+            'profit_factor': profit_factor,
+            'trades_data': backtest.raw_data.get('trades', []) if backtest.raw_data else [],
+        })
+    
+    return render(request, 'admin/backtest_dashboard.html', context)

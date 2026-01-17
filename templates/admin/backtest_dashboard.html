@@ -1,0 +1,791 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Backtest Dashboard - {{ selected_strategy.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 250px;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.03);
+        border-right: 1px solid var(--border-glass);
+        overflow-y: auto;
+        padding: 20px 0;
+        z-index: 1000;
+    }
+    
+    .sidebar-header {
+        padding: 0 20px 20px 20px;
+        border-bottom: 1px solid var(--border-glass);
+    }
+    
+    .sidebar-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .sidebar-nav {
+        padding: 20px 0;
+    }
+    
+    .sidebar-nav-item {
+        display: block;
+        padding: 12px 20px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+    
+    .sidebar-nav-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item.active {
+        background: rgba(21, 139, 249, 0.1);
+        color: var(--primary-blue);
+        border-left-color: var(--primary-blue);
+    }
+    
+    .main-content {
+        margin-left: 250px;
+        padding: 30px;
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .metric-card {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .metric-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+    
+    .metric-value.profit {
+        color: #00ffaa;
+    }
+    
+    .metric-value.loss {
+        color: #ff4444;
+    }
+    
+    .metric-value.neutral {
+        color: #4dd0e1;
+    }
+    
+    .chart-container {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .chart-wrapper {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    .chart-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 15px;
+    }
+    
+    .trades-table-container {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 20px;
+        overflow-x: auto;
+    }
+    
+    .trades-table {
+        width: 100%;
+        color: var(--text-primary);
+        font-size: 13px;
+    }
+    
+    .trades-table thead {
+        border-bottom: 1px solid var(--border-glass);
+    }
+    
+    .trades-table th {
+        padding: 12px 8px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+    
+    .trades-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    
+    .trades-table tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .text-profit {
+        color: #00ffaa;
+        font-weight: 600;
+    }
+    
+    .text-loss {
+        color: #ff4444;
+        font-weight: 600;
+    }
+    
+    .badge-tp {
+        background: rgba(0, 255, 170, 0.15);
+        color: #00ffaa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .badge-sl {
+        background: rgba(255, 68, 68, 0.15);
+        color: #ff4444;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .badge-long {
+        background: rgba(77, 208, 225, 0.15);
+        color: #4dd0e1;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .badge-short {
+        background: rgba(255, 167, 38, 0.15);
+        color: #ffa726;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-glass);
+    }
+    
+    .pagination-btn {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        color: var(--text-primary);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--bg-glass-hover);
+    }
+    
+    .pagination-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Sidebar Navigation -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2 class="sidebar-title">
+            <i class="bi bi-graph-up"></i> Backtests
+        </h2>
+    </div>
+    <nav class="sidebar-nav">
+        {% for strategy in all_strategies %}
+        <a href="{% url 'backtest_strategy_dashboard' strategy.id %}" 
+           class="sidebar-nav-item {% if strategy.id == selected_strategy.id %}active{% endif %}">
+            {{ strategy.name }}
+            {% if strategy.is_pair_trading %}
+            <i class="bi bi-arrow-left-right" style="font-size: 10px;"></i>
+            {% endif %}
+        </a>
+        {% empty %}
+        <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+            No strategies available
+        </div>
+        {% endfor %}
+    </nav>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    {% if backtest %}
+    <!-- Header -->
+    <div class="mb-4">
+        <h1 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px;">
+            {{ selected_strategy.name }}
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+            Backtest Period: {{ backtest.backtest_start_date|date:"d M Y" }} - {{ backtest.backtest_end_date|date:"d M Y" }}
+            <span style="margin-left: 15px; color: var(--text-muted);">
+                <i class="bi bi-clock"></i> Run on {{ backtest.run_date|date:"d M Y H:i" }}
+            </span>
+        </p>
+    </div>
+    
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Net Profit</div>
+            <div class="metric-value {% if backtest.total_profit > 0 %}profit{% elif backtest.total_profit < 0 %}loss{% else %}neutral{% endif %}">
+                {% if backtest.total_profit > 0 %}+{% endif %}${{ backtest.total_profit|floatformat:0|intcomma }}
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-label">Trades</div>
+            <div class="metric-value" style="color: var(--text-primary);">
+                {{ backtest.total_trades }}
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-label">Win Rate</div>
+            <div class="metric-value neutral">
+                {{ backtest.win_rate }}%
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-label">Max Drawdown %</div>
+            <div class="metric-value loss">
+                {{ backtest.max_drawdown_percent }}%
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-label">Profit Factor</div>
+            <div class="metric-value {% if profit_factor >= 2 %}profit{% elif profit_factor >= 1 %}neutral{% else %}loss{% endif %}">
+                {{ profit_factor|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Trade Log Chart (60% height) -->
+    <div class="chart-container" style="height: 500px;">
+        <h3 class="chart-title">
+            <i class="bi bi-bar-chart-line"></i> Trade Log - Entry & Exit Points
+        </h3>
+        <div class="chart-wrapper" style="height: calc(100% - 45px);">
+            <canvas id="tradeLogChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Equity Curve Chart (40% height) -->
+    <div class="chart-container" style="height: 350px;">
+        <h3 class="chart-title">
+            <i class="bi bi-graph-up-arrow"></i> Equity Curve
+        </h3>
+        <div class="chart-wrapper" style="height: calc(100% - 45px);">
+            <canvas id="equityCurveChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Trades Detail Table -->
+    <div class="trades-table-container">
+        <h3 class="chart-title">
+            <i class="bi bi-table"></i> Trade History ({{ trades_data|length }} trades)
+        </h3>
+        
+        <table class="trades-table" id="tradesTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Entry Time</th>
+                    <th>Exit Time</th>
+                    <th>Direction</th>
+                    <th>Entry Price</th>
+                    <th>Exit Price</th>
+                    <th>P&L</th>
+                    <th>Result</th>
+                    <th>Cumulative</th>
+                </tr>
+            </thead>
+            <tbody id="tradesTableBody">
+                <!-- Will be populated by JavaScript -->
+            </tbody>
+        </table>
+        
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prevPageBtn" onclick="changePage(-1)">
+                <i class="bi bi-chevron-left"></i> Previous
+            </button>
+            <span class="pagination-info" id="paginationInfo">Page 1</span>
+            <button class="pagination-btn" id="nextPageBtn" onclick="changePage(1)">
+                Next <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="bi bi-graph-up"></i>
+        <h3 style="color: var(--text-primary); margin-bottom: 10px;">No Backtest Data Available</h3>
+        <p>There are no backtest results for {{ selected_strategy.name }} yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if backtest %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+// Trades data from Django
+const tradesData = {{ trades_data|safe }};
+
+// Pagination settings
+let currentPage = 1;
+const rowsPerPage = 50;
+
+// Chart instances
+let tradeLogChart = null;
+let equityCurveChart = null;
+
+// Initialize everything
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    renderTradesTable();
+});
+
+// Initialize charts
+function initCharts() {
+    if (tradesData.length === 0) return;
+    
+    // Prepare data for charts
+    const chartData = prepareChartData(tradesData);
+    
+    // Trade Log Chart
+    initTradeLogChart(chartData);
+    
+    // Equity Curve Chart
+    initEquityCurveChart(chartData);
+}
+
+// Prepare data for charts
+function prepareChartData(trades) {
+    const entries = [];
+    const exits = [];
+    const equityCurve = [];
+    const priceLine = [];
+    
+    trades.forEach((trade, index) => {
+        // Entry points
+        entries.push({
+            x: new Date(trade.entry_time),
+            y: trade.entry_price,
+            pnl: trade.pnl,
+            direction: trade.direction,
+            index: index
+        });
+        
+        // Exit points
+        exits.push({
+            x: new Date(trade.exit_time),
+            y: trade.exit_price,
+            pnl: trade.pnl,
+            hit: trade.hit,
+            index: index
+        });
+        
+        // Price line (connect entry to exit)
+        priceLine.push({
+            x: new Date(trade.entry_time),
+            y: trade.entry_price
+        });
+        priceLine.push({
+            x: new Date(trade.exit_time),
+            y: trade.exit_price
+        });
+        
+        // Equity curve
+        equityCurve.push({
+            x: new Date(trade.exit_time),
+            y: trade.cumulative
+        });
+    });
+    
+    return { entries, exits, equityCurve, priceLine };
+}
+
+// Initialize Trade Log Chart
+function initTradeLogChart(chartData) {
+    const ctx = document.getElementById('tradeLogChart').getContext('2d');
+    
+    // Separate winning and losing entries/exits
+    const winningEntries = chartData.entries.filter(e => e.pnl > 0);
+    const losingEntries = chartData.entries.filter(e => e.pnl <= 0);
+    const winningExits = chartData.exits.filter(e => e.pnl > 0);
+    const losingExits = chartData.exits.filter(e => e.pnl <= 0);
+    
+    tradeLogChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Price Line',
+                    type: 'line',
+                    data: chartData.priceLine,
+                    borderColor: 'rgba(160, 160, 176, 0.3)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0,
+                    order: 2
+                },
+                {
+                    label: 'Winning Entry',
+                    data: winningEntries,
+                    backgroundColor: 'rgba(0, 255, 170, 0.6)',
+                    borderColor: '#00ffaa',
+                    borderWidth: 2,
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    rotation: 0,
+                    order: 0
+                },
+                {
+                    label: 'Losing Entry',
+                    data: losingEntries,
+                    backgroundColor: 'rgba(255, 68, 68, 0.6)',
+                    borderColor: '#ff4444',
+                    borderWidth: 2,
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    rotation: 180,
+                    order: 0
+                },
+                {
+                    label: 'Winning Exit',
+                    data: winningExits,
+                    backgroundColor: 'rgba(0, 255, 170, 0.4)',
+                    borderColor: '#00ffaa',
+                    borderWidth: 1,
+                    pointRadius: 4,
+                    pointStyle: 'circle',
+                    order: 1
+                },
+                {
+                    label: 'Losing Exit',
+                    data: losingExits,
+                    backgroundColor: 'rgba(255, 68, 68, 0.4)',
+                    borderColor: '#ff4444',
+                    borderWidth: 1,
+                    pointRadius: 4,
+                    pointStyle: 'circle',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#a0a0b0',
+                        font: { size: 11 },
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    titleColor: '#ffffff',
+                    bodyColor: '#a0a0b0',
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            const point = context[0].raw;
+                            return `Trade #${point.index + 1}`;
+                        },
+                        label: function(context) {
+                            const point = context.raw;
+                            return [
+                                `Price: ${point.y.toFixed(3)}`,
+                                `P&L: ${point.pnl > 0 ? '+' : ''}${point.pnl.toFixed(2)}`,
+                                `Direction: ${point.direction || point.hit}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize Equity Curve Chart
+function initEquityCurveChart(chartData) {
+    const ctx = document.getElementById('equityCurveChart').getContext('2d');
+    
+    // Find initial value (first trade's cumulative - first trade's pnl)
+    const initialValue = tradesData.length > 0 ? tradesData[0].cumulative - tradesData[0].pnl : 0;
+    
+    equityCurveChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Equity',
+                data: chartData.equityCurve,
+                borderColor: '#4dd0e1',
+                backgroundColor: function(context) {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(77, 208, 225, 0.3)');
+                    gradient.addColorStop(1, 'rgba(77, 208, 225, 0.0)');
+                    return gradient;
+                },
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#4dd0e1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    titleColor: '#ffffff',
+                    bodyColor: '#a0a0b0',
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            const profit = value - initialValue;
+                            return [
+                                `Equity: $${value.toFixed(2)}`,
+                                `Profit: ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 10 },
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render trades table with pagination
+function renderTradesTable() {
+    const tbody = document.getElementById('tradesTableBody');
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = Math.min(startIndex + rowsPerPage, tradesData.length);
+    
+    tbody.innerHTML = '';
+    
+    for (let i = startIndex; i < endIndex; i++) {
+        const trade = tradesData[i];
+        const row = document.createElement('tr');
+        
+        const pnlClass = trade.pnl > 0 ? 'text-profit' : 'text-loss';
+        const hitBadgeClass = trade.hit === 'TP' ? 'badge-tp' : 'badge-sl';
+        const directionBadgeClass = trade.direction === 'LONG' ? 'badge-long' : 'badge-short';
+        
+        row.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${formatDateTime(trade.entry_time)}</td>
+            <td>${formatDateTime(trade.exit_time)}</td>
+            <td><span class="${directionBadgeClass}">${trade.direction}</span></td>
+            <td>${trade.entry_price.toFixed(3)}</td>
+            <td>${trade.exit_price.toFixed(3)}</td>
+            <td class="${pnlClass}">${trade.pnl > 0 ? '+' : ''}${trade.pnl.toFixed(2)}</td>
+            <td><span class="${hitBadgeClass}">${trade.hit}</span></td>
+            <td>${trade.cumulative.toFixed(2)}</td>
+        `;
+        
+        tbody.appendChild(row);
+    }
+    
+    updatePaginationControls();
+}
+
+// Change page
+function changePage(direction) {
+    const totalPages = Math.ceil(tradesData.length / rowsPerPage);
+    const newPage = currentPage + direction;
+    
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderTradesTable();
+        
+        // Scroll to top of table
+        document.getElementById('tradesTable').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Update pagination controls
+function updatePaginationControls() {
+    const totalPages = Math.ceil(tradesData.length / rowsPerPage);
+    
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+    
+    const startIndex = (currentPage - 1) * rowsPerPage + 1;
+    const endIndex = Math.min(currentPage * rowsPerPage, tradesData.length);
+    
+    document.getElementById('paginationInfo').textContent = 
+        `Page ${currentPage} of ${totalPages} (${startIndex}-${endIndex} of ${tradesData.length})`;
+}
+
+// Format datetime
+function formatDateTime(dateStr) {
+    const date = new Date(dateStr);
+    const options = { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    };
+    return date.toLocaleDateString('en-US', options);
+}
+</script>
+{% endif %}
+
+{% endblock %}
