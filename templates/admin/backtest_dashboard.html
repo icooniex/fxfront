@@ -25,7 +25,7 @@
     }
     
     .sidebar-title {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
         color: var(--text-primary);
         margin: 0;
@@ -37,11 +37,12 @@
     
     .sidebar-nav-item {
         display: block;
-        padding: 12px 20px;
+        padding: 10px 16px;
         color: var(--text-secondary);
         text-decoration: none;
         transition: all 0.2s;
         border-left: 3px solid transparent;
+        font-size: 13px;
     }
     
     .sidebar-nav-item:hover {
@@ -53,6 +54,46 @@
         background: rgba(21, 139, 249, 0.1);
         color: var(--primary-blue);
         border-left-color: var(--primary-blue);
+    }
+    
+    .strategy-info {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+    
+    .strategy-version {
+        font-size: 8px;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-weight: 500;
+    }
+    
+    .strategy-status-badge {
+        font-size: 8px;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .strategy-status-badge.active {
+        background: rgba(21, 139, 249, 0.15);
+        color: #158bf9;
+    }
+    
+    .strategy-status-badge.inactive {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+    }
+    
+    .strategy-status-badge.beta {
+        background: rgba(255, 193, 7, 0.15);
+        color: #ffc107;
     }
     
     .main-content {
@@ -257,20 +298,25 @@
 
 {% block content %}
 <!-- Sidebar Navigation -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <h2 class="sidebar-title">
-            <i class="bi bi-graph-up"></i> Backtests
+            <i class="bi bi-graph-up"></i> Backtesting Analysis
         </h2>
     </div>
     <nav class="sidebar-nav">
         {% for strategy in all_strategies %}
         <a href="{% url 'backtest_strategy_dashboard' strategy.id %}" 
            class="sidebar-nav-item {% if strategy.id == selected_strategy.id %}active{% endif %}">
-            {{ strategy.name }}
-            {% if strategy.is_pair_trading %}
-            <i class="bi bi-arrow-left-right" style="font-size: 10px;"></i>
-            {% endif %}
+            <div>
+                <strong>{{ strategy.name }}</strong>
+            </div>
+            <div class="strategy-info">
+                <span class="strategy-version">v{{ strategy.version }}</span>
+                <span class="strategy-status-badge {{ strategy.status|lower }}">
+                    {{ strategy.get_status_display }}
+                </span>
+            </div>
         </a>
         {% empty %}
         <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
