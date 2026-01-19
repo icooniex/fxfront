@@ -101,6 +101,14 @@ class SubscriptionPackage(TimeStampedModel):
     features = models.JSONField(default=dict, blank=True, help_text="Package features as JSON")
     description = models.TextField(blank=True)
     
+    # Referral configuration
+    referral_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Percentage of package price as credit for referrer (e.g., 20.00 for 20%)"
+    )
+    
     # Symbol pair limits
     max_symbols = models.PositiveIntegerField(
         default=1,
@@ -403,6 +411,16 @@ class SubscriptionPayment(TimeStampedModel):
         SubscriptionPackage,
         on_delete=models.PROTECT,
         related_name='payments'
+    )
+    
+    # Referral code used for this payment (optional)
+    referral_code = models.ForeignKey(
+        'ReferralCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='used_in_payments',
+        help_text="Referral code used in this purchase"
     )
     
     # Request type
@@ -780,3 +798,189 @@ class UserPackageQuota(TimeStampedModel):
         """Get number of remaining account slots"""
         return max(0, self.quota_total - self.accounts_used)
 
+
+# Referral Code Model
+class ReferralCode(TimeStampedModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='referral_code')
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        db_index=True,
+        help_text="Unique referral code for the user"
+    )
+    
+    # Marketing campaign configuration
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Promotional discount percentage for referred friends (e.g., 10.00 for 10%)"
+    )
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Marketing description or campaign name for this referral code"
+    )
+    
+    class Meta:
+        verbose_name = 'Referral Code'
+        verbose_name_plural = 'Referral Codes'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.code}"
+    
+    def get_promotion_text(self):
+        """Get readable promotion description"""
+        if self.discount_percentage > 0:
+            return f"Get {self.discount_percentage:.0f}% discount" + (f" - {self.description}" if self.description else "")
+        return self.description or "No promotion"
+
+
+# Referral Earnings Model
+class ReferralEarnings(TimeStampedModel):
+    referrer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='referral_earnings'
+    )
+    referee = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='referred_by_earnings',
+        help_text="User who was referred"
+    )
+    referral_code = models.ForeignKey(
+        ReferralCode,
+        on_delete=models.PROTECT,
+        related_name='earnings'
+    )
+    subscription_payment = models.ForeignKey(
+        SubscriptionPayment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referral_earnings'
+    )
+    subscription_package = models.ForeignKey(
+        SubscriptionPackage,
+        on_delete=models.PROTECT,
+        related_name='referral_earnings'
+    )
+    
+    # Earnings details
+    package_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Original package price at time of purchase"
+    )
+    referral_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Percentage rate applied"
+    )
+    credit_earned = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Credit amount earned by referrer"
+    )
+    
+    # Tracking
+    is_recurring = models.BooleanField(
+        default=False,
+        help_text="Whether this is a recurring monthly credit"
+    )
+    month_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Which month this earning is for (1=first month, 2=second, etc.)"
+    )
+    
+    class Meta:
+        verbose_name = 'Referral Earning'
+        verbose_name_plural = 'Referral Earnings'
+        ordering = ['-created_at']
+        unique_together = [['referrer', 'referee', 'subscription_payment']]
+
+    def __str__(self):
+        return f"{self.referrer.username} <- {self.referee.username} (฿{self.credit_earned})"
+
+
+# User Credit Balance Model
+class UserCredit(TimeStampedModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='credit_balance')
+    balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Available credit balance in THB"
+    )
+    
+    class Meta:
+        verbose_name = 'User Credit'
+        verbose_name_plural = 'User Credits'
+
+    def __str__(self):
+        return f"{self.user.username} - ฿{self.balance}"
+    
+    def add_credit(self, amount, description=""):
+        """Add credit to balance and create transaction"""
+        self.balance += amount
+        self.save()
+        ReferralTransaction.objects.create(
+            user=self.user,
+            transaction_type='CREDIT',
+            amount=amount,
+            description=description or "Credit added"
+        )
+        return self.balance
+    
+    def deduct_credit(self, amount, description=""):
+        """Deduct credit from balance and create transaction"""
+        if self.balance >= amount:
+            self.balance -= amount
+            self.save()
+            ReferralTransaction.objects.create(
+                user=self.user,
+                transaction_type='DEBIT',
+                amount=amount,
+                description=description or "Credit used"
+            )
+            return True
+        return False
+
+
+# Referral Transaction Ledger
+class ReferralTransaction(TimeStampedModel):
+    TRANSACTION_TYPES = [
+        ('CREDIT', 'Credit Added'),
+        ('DEBIT', 'Credit Used'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='referral_transactions')
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+    
+    # Related objects
+    referral_earning = models.ForeignKey(
+        ReferralEarnings,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions'
+    )
+    subscription_payment = models.ForeignKey(
+        SubscriptionPayment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='credit_transactions'
+    )
+    
+    class Meta:
+        verbose_name = 'Referral Transaction'
+        verbose_name_plural = 'Referral Transactions'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.transaction_type} ฿{self.amount}"

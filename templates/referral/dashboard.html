@@ -1,0 +1,240 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Referral Program - FX Bot Monitor{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="container-mobile">
+        <!-- Header -->
+        <div class="mb-3 fade-in">
+            <h1 class="mb-1">Referral Program</h1>
+            <p class="text-secondary mb-0" style="font-size: 14px;">ชวนเพื่อนและรับเครดิตส่วนลด</p>
+        </div>
+
+        {% if not referral_code %}
+        <!-- No Referral Code Yet - First Purchase Required -->
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 24px;">
+            <div class="text-center">
+                <i class="bi bi-lock" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                <h5 class="mb-2" style="font-weight: 600; color: var(--text-primary);">รหัส Referral ยังไม่พร้อมใช้งาน</h5>
+                <p class="text-secondary mb-3" style="font-size: 14px;">
+                    คุณจะได้รับรหัส Referral หลังจากทำการซื้อแพ็คเกจครั้งแรกสำเร็จ
+                </p>
+                <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue">
+                    <i class="bi bi-box-seam me-2"></i>ดูแพ็คเกจ
+                </a>
+            </div>
+        </div>
+        
+        <!-- How It Works Section -->
+        <div class="glass-card fade-in" style="animation-delay: 0.2s; padding: 20px; background: rgba(21, 139, 249, 0.05);">
+            <h6 class="mb-3" style="font-weight: 600; color: var(--primary-blue);">
+                <i class="bi bi-lightbulb me-2"></i>ทำงานอย่างไร?
+            </h6>
+            
+            <ul style="font-size: 13px; color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                <li class="mb-2">ซื้อแพ็คเกจครั้งแรก → รับรหัส Referral</li>
+                <li class="mb-2">แชร์รหัสให้เพื่อน</li>
+                <li class="mb-2">เพื่อนสมัครด้วยรหัสคุณ → คุณได้เครดิต</li>
+                <li>นำเครดิตไปลดราคาตอนต่ออายุ</li>
+            </ul>
+        </div>
+        
+        {% else %}
+        <!-- Referral Code Card -->
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 20px;">
+            <h5 class="mb-3" style="font-weight: 600;">
+                <i class="bi bi-qr-code me-2" style="color: var(--primary-blue);"></i>รหัส Referral ของคุณ
+            </h5>
+            
+            <div class="mb-3">
+                <input 
+                    type="text" 
+                    class="form-control form-control-glass text-center" 
+                    id="referralCode" 
+                    value="{{ referral_code.code }}" 
+                    readonly
+                    style="font-size: 18px; font-weight: 700; letter-spacing: 2px; font-family: monospace;"
+                >
+            </div>
+            
+            <button 
+                class="btn btn-primary-blue w-100" 
+                onclick="copyToClipboard()" 
+                style="font-size: 14px;"
+            >
+                <i class="bi bi-clipboard me-2"></i>คัดลอกรหัส
+            </button>
+            
+            {% if referral_code.discount_percentage > 0 %}
+            <div class="mt-3" style="background: rgba(21, 139, 249, 0.1); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 12px;">
+                <small class="text-primary-blue">
+                    <i class="bi bi-gift me-1"></i>
+                    <strong>แคมเปญพิเศษ:</strong> {{ referral_code.get_promotion_text }}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Credit Balance Card -->
+        <div class="glass-card fade-in mb-3" style="animation-delay: 0.15s; padding: 20px;">
+            <h5 class="mb-3" style="font-weight: 600; ">
+                <i class="bi bi-wallet2 me-2" style="color: var(--primary-blue);"></i>เครดิตของคุณ
+            </h5>
+            
+            <div class="mb-3">
+                <p class="text-secondary mb-1" style="font-size: 13px;">เครดิตที่ใช้ได้</p>
+                <h2 class="mb-0" style="font-size: 36px; font-weight: 700; ">
+                    ฿{{ credit_balance.balance|floatformat:2 }}
+                </h2>
+            </div>
+            
+            <div class="divider" style="margin: 16px 0;"></div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <p class="text-secondary mb-1" style="font-size: 12px;">รายได้รวม</p>
+                    <h5 class="mb-0" style="font-weight: 600;">
+                        ฿{{ total_earned|floatformat:2 }}
+                    </h5>
+                </div>
+                <div>
+                    <p class="text-secondary mb-1" style="font-size: 12px;">จากเพื่อน</p>
+                    <h5 class="mb-0" style="font-weight: 600;">{{ earnings_count }} คน</h5>
+                </div>
+            </div>
+            
+            <div class="mt-3" style="background: rgba(21, 139, 249, 0.1); border: 1px solid rgba(21, 139, 249, 0.3); border-radius: 12px; padding: 12px;">
+                <small class="text-primary-blue">
+                    <i class="bi bi-info-circle me-1"></i>
+                    ใช้เครดิตเพื่อรับส่วนลดในการต่ออายุหรืออัพเกรดแพคเกจ!
+                </small>
+            </div>
+        </div>
+
+        <!-- Active Referrals Section -->
+        <div class="section-header" style="margin-top: 24px; margin-bottom: 12px;">
+            <h6 class="section-title" style="font-weight: 600;">
+                <i class="bi bi-people me-2" style="color: var(--primary-blue);"></i>
+                เพื่อนที่ใช้รหัสของคุณ
+                {% if active_referrals > 0 %}
+                <span class="badge-glass badge-primary-blue" style="font-size: 11px; margin-left: 8px;">{{ active_referrals }}</span>
+                {% endif %}
+            </h6>
+        </div>
+
+        {% if referral_earnings %}
+        <!-- Referral List -->
+        {% for earning in referral_earnings %}
+        <div class="glass-card fade-in mb-2" style="animation-delay: 0.2s; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                            @{{ earning.referee.username }}
+                        </span>
+                        <span class="badge-glass badge-primary-blue" style="font-size: 10px; padding: 2px 6px;">
+                            {{ earning.subscription_package.name }}
+                        </span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                        <i class="bi bi-calendar3 me-1"></i>{{ earning.created_at|date:"d/m/Y" }}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 15px; font-weight: 700; color: var(--primary-blue);">
+                        +฿{{ earning.credit_earned|floatformat:2 }}
+                    </div>
+                    <small style="font-size: 10px; color: var(--text-muted);">({{ earning.referral_percentage }}%)</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state glass-card-static">
+            <i class="bi bi-people"></i>
+            <div class="empty-state-title">ยังไม่มีเพื่อนใช้รหัสของคุณ</div>
+            <div class="empty-state-text">แชร์รหัส Referral เพื่อเริ่มสะสมเครดิต</div>
+        </div>
+        {% endif %}
+
+        <!-- How It Works Section -->
+        <div class="glass-card mt-4 fade-in" style="animation-delay: 0.3s; padding: 20px; background: rgba(21, 139, 249, 0.05);">
+            <h6 class="mb-3" style="font-weight: 600; color: var(--primary-blue);">
+                <i class="bi bi-lightbulb me-2"></i>ทำงานอย่างไร?
+            </h6>
+            
+            <div class="mb-3">
+                <div class="mb-2" style="font-size: 13px; color: var(--text-primary); font-weight: 500;">
+                    <i class="bi bi-gift me-1" style="color: var(--primary-blue);"></i>สำหรับคุณ
+                </div>
+                <ul style="font-size: 12px; color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                    <li class="mb-1">เพื่อนสมัครด้วยรหัสคุณ → คุณได้เครดิต</li>
+                    <li class="mb-1">เครดิตขึ้นอยู่กับแพคเกจที่เพื่อนซื้อ</li>
+                    <li class="mb-1">นำเครดิตไปลดราคาตอนต่ออายุ</li>
+                    <li>ได้รับเครดิตต่อเนื่องเมื่อเพื่อนต่ออายุ</li>
+                </ul>
+            </div>
+            
+            <div class="divider" style="margin: 12px 0;"></div>
+            
+            <div>
+                <div class="mb-2" style="font-size: 13px; color: var(--text-primary); font-weight: 500;">
+                    <i class="bi bi-person-plus me-1" style="color: var(--primary-blue);"></i>สำหรับเพื่อนคุณ
+                </div>
+                <ul style="font-size: 12px; color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                    <li class="mb-1">อาจได้รับส่วนลดพิเศษ (ขึ้นกับแคมเปญ)</li>
+                    <li class="mb-1">ลงทะเบียนและเริ่มใช้งานได้ง่าย</li>
+                    <li>รับรหัส Referral ของตัวเองเพื่อแชร์ต่อ!</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if referral_code %}
+<script>
+function copyToClipboard() {
+    const code = document.getElementById('referralCode');
+    code.select();
+    code.setSelectionRange(0, 99999); // For mobile devices
+    
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code.value).then(() => {
+            showCopySuccess();
+        }).catch(() => {
+            // Fallback to execCommand
+            document.execCommand('copy');
+            showCopySuccess();
+        });
+    } else {
+        // Fallback for older browsers
+        document.execCommand('copy');
+        showCopySuccess();
+    }
+}
+
+function showCopySuccess() {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check-circle me-2"></i>คัดลอกแล้ว!';
+    button.style.background = 'var(--primary-blue)';
+    
+    setTimeout(() => {
+        button.innerHTML = originalHTML;
+        button.style.background = '';
+    }, 2000);
+}
+</script>
+{% endif %}
+{% endblock %}
+
+{% block bottom_nav %}
+{% include 'base/bottom_nav.html' %}
+{% endblock %}

@@ -2,11 +2,16 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.models import User
 from .models import (
     SubscriptionPayment, UserTradeAccount, PaymentStatus, 
-    SubscriptionStatus, BotStrategy, RequestType, UserPackageQuota
+    SubscriptionStatus, BotStrategy, RequestType, UserPackageQuota,
+    ReferralCode, UserCredit, ReferralEarnings, ReferralTransaction
 )
 import logging
+import uuid
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +63,36 @@ def handle_payment_status_change(sender, instance, **kwargs):
                 )
                 
                 logger.info(f"Created package quota for user {instance.user.username}: {package.max_accounts} accounts")
+                
+                # Create Referral Code and Credit for first-time purchaser
+                try:
+                    if not ReferralCode.objects.filter(user=instance.user).exists():
+                        import random
+                        import string
+                        
+                        # Generate unique 8-character referral code
+                        chars = string.ascii_letters + string.digits
+                        unique_code = ''.join(random.choices(chars, k=8))
+                        
+                        # Ensure code is unique
+                        while ReferralCode.objects.filter(code=unique_code).exists():
+                            unique_code = ''.join(random.choices(chars, k=8))
+                        
+                        # Create ReferralCode
+                        ReferralCode.objects.create(
+                            user=instance.user,
+                            code=unique_code,
+                            discount_percentage=0,
+                            description=""
+                        )
+                        
+                        # Create UserCredit if doesn't exist
+                        UserCredit.objects.get_or_create(user=instance.user, defaults={'balance': 0})
+                        
+                        logger.info(f"Created referral code '{unique_code}' for first-time purchaser {instance.user.username}")
+                except Exception as e:
+                    logger.error(f"Failed to create referral code for user {instance.user.username}: {e}")
+                
                 # TODO: Send LINE/SMS notification with setup link
                 
             elif instance.request_type == RequestType.RENEWAL:
@@ -215,3 +250,69 @@ def handle_bot_strategy_update(sender, instance, created, update_fields, **kwarg
     except Exception as e:
         logger.error(f"Failed to update Redis for strategy {instance.id}: {e}")
 
+
+# ============================================================================
+# REFERRAL SYSTEM SIGNALS - Removed auto-generation on user creation
+# Referral codes are now created on first successful purchase
+# ============================================================================
+
+# Signal removed - referral code creation moved to payment completion signal
+
+@receiver(post_save, sender=SubscriptionPayment)
+def process_referral_earnings(sender, instance, created=False, update_fields=None, **kwargs):
+    """
+    Process referral earnings when a payment is completed.
+    Creates ReferralEarnings record and adds credit to referrer's balance.
+    """
+    # Only process if payment status changed to COMPLETED
+    if not instance.referral_code or instance.payment_status != PaymentStatus.COMPLETED:
+        return
+    
+    try:
+        # Check if earnings already exist for this payment (to avoid duplicates)
+        if ReferralEarnings.objects.filter(subscription_payment=instance).exists():
+            return
+        
+        referral_code = instance.referral_code
+        referrer = referral_code.user
+        referee = instance.user
+        package = instance.subscription_package
+        
+        # Don't process if referrer and referee are the same
+        if referrer == referee:
+            logger.warning(f"Attempted self-referral for user {referee.username}")
+            return
+        
+        # Calculate referral credit based on package percentage
+        # Use package.price (original price) instead of payment_amount for fair referral calculation
+        referral_percentage = package.referral_percentage
+        original_price = package.price
+        credit_earned = (original_price * referral_percentage / 100) if referral_percentage > 0 else 0
+        
+        # Create ReferralEarnings record
+        earnings = ReferralEarnings.objects.create(
+            referrer=referrer,
+            referee=referee,
+            referral_code=referral_code,
+            subscription_payment=instance,
+            subscription_package=package,
+            package_price=original_price,  # Store original package price
+            referral_percentage=referral_percentage,
+            credit_earned=credit_earned,
+            is_recurring=False,
+            month_number=1
+        )
+        
+        # Add credit to referrer's balance if credit_earned > 0
+        if credit_earned > 0:
+            credit_balance, created = UserCredit.objects.get_or_create(user=referrer)
+            credit_balance.add_credit(
+                credit_earned,  # Pass Decimal directly, not float
+                f"Referral credit from {referee.username} ({package.name})"
+            )
+            logger.info(f"Added ฿{credit_earned} credit to {referrer.username} for referral from {referee.username}")
+        
+        logger.info(f"Created referral earning: {referrer.username} <- {referee.username} (฿{credit_earned})")
+        
+    except Exception as e:
+        logger.error(f"Failed to process referral earnings for payment {instance.id}: {e}")

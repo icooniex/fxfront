@@ -43,6 +43,9 @@ urlpatterns = [
     # Profile
     path('profile/', views.profile_view, name='profile'),
     
+    # Referral Program
+    path('referral/dashboard/', views.referral_dashboard, name='referral_dashboard'),
+    
     # Trades
     path('trades/history/', views.trades_history_view, name='trades_history'),
     

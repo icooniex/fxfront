@@ -9,7 +9,11 @@ from .models import (
     BotAPIKey,
     BotStrategy,
     BacktestResult,
-    UserPackageQuota
+    UserPackageQuota,
+    ReferralCode,
+    ReferralEarnings,
+    UserCredit,
+    ReferralTransaction
 )
 import secrets
 
@@ -34,6 +38,10 @@ class SubscriptionPackageAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Package Details', {
             'fields': ('name', 'duration_days', 'price', 'description', 'is_active')
+        }),
+        ('Referral Configuration', {
+            'fields': ('referral_percentage',),
+            'description': 'Percentage of package price earned as credit by referrers (e.g., 20.00 for 20%)'
         }),
         ('Account Limits', {
             'fields': ('max_accounts', 'max_symbols', 'min_lot_size', 'max_lot_size')
@@ -613,3 +621,158 @@ class UserPackageQuotaAdmin(admin.ModelAdmin):
         return format_html(html)
     related_accounts_display.short_description = 'Related Trade Accounts'
 
+
+# ============================================================================
+# REFERRAL SYSTEM ADMIN
+# ============================================================================
+
+@admin.register(ReferralCode)
+class ReferralCodeAdmin(admin.ModelAdmin):
+    list_display = ['code', 'user_display', 'discount_percentage', 'description', 'is_active', 'created_at']
+    list_filter = ['is_active', 'discount_percentage', 'created_at']
+    search_fields = ['code', 'user__username', 'user__first_name', 'user__last_name', 'description']
+    readonly_fields = ['code', 'created_at', 'updated_at']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Referral Code', {
+            'fields': ('user', 'code')
+        }),
+        ('Marketing Campaign', {
+            'fields': ('discount_percentage', 'description'),
+            'description': 'Configure promotional benefits for referred friends. Leave discount_percentage at 0.00 if no special promotion.'
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def user_display(self, obj):
+        return f"{obj.user.username} ({obj.user.first_name} {obj.user.last_name})"
+    user_display.short_description = 'User'
+
+
+@admin.register(ReferralEarnings)
+class ReferralEarningsAdmin(admin.ModelAdmin):
+    list_display = ['referrer', 'referee', 'package_name', 'credit_earned_display', 'is_recurring', 'created_at']
+    list_filter = ['is_recurring', 'subscription_package', 'created_at']
+    search_fields = ['referrer__username', 'referee__username', 'referral_code__code']
+    readonly_fields = ['referrer', 'referee', 'referral_code', 'subscription_payment', 'package_price', 'referral_percentage', 'created_at', 'updated_at']
+    raw_id_fields = ['referrer', 'referee']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Referral Information', {
+            'fields': ('referrer', 'referee', 'referral_code')
+        }),
+        ('Earnings Details', {
+            'fields': ('subscription_package', 'package_price', 'referral_percentage', 'credit_earned', 'is_recurring', 'month_number')
+        }),
+        ('Payment Reference', {
+            'fields': ('subscription_payment',),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def package_name(self, obj):
+        return obj.subscription_package.name
+    package_name.short_description = 'Package'
+    
+    def credit_earned_display(self, obj):
+        return f"฿{obj.credit_earned:,.2f}"
+    credit_earned_display.short_description = 'Credit Earned'
+    
+    def has_add_permission(self, request):
+        # Earnings are created automatically via signals, not manually
+        return False
+
+
+@admin.register(UserCredit)
+class UserCreditAdmin(admin.ModelAdmin):
+    list_display = ['user_display', 'balance_display', 'created_at', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    readonly_fields = ['user', 'created_at', 'updated_at']
+    ordering = ['-balance']
+    
+    fieldsets = (
+        ('User', {
+            'fields': ('user',)
+        }),
+        ('Credit Balance', {
+            'fields': ('balance',)
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def user_display(self, obj):
+        return f"{obj.user.username} ({obj.user.first_name} {obj.user.last_name})"
+    user_display.short_description = 'User'
+    
+    def balance_display(self, obj):
+        return f"฿{obj.balance:,.2f}"
+    balance_display.short_description = 'Balance'
+    
+    def has_add_permission(self, request):
+        # Credit accounts are created automatically for new users
+        return False
+
+
+@admin.register(ReferralTransaction)
+class ReferralTransactionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'transaction_type_display', 'amount_display', 'description_short', 'created_at']
+    list_filter = ['transaction_type', 'created_at']
+    search_fields = ['user__username', 'description']
+    readonly_fields = ['user', 'transaction_type', 'amount', 'description', 'referral_earning', 'subscription_payment', 'created_at', 'updated_at']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Transaction Information', {
+            'fields': ('user', 'transaction_type', 'amount', 'description')
+        }),
+        ('Related Objects', {
+            'fields': ('referral_earning', 'subscription_payment'),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def transaction_type_display(self, obj):
+        if obj.transaction_type == 'CREDIT':
+            return format_html('<span style="color: green; font-weight: bold;">+{}</span>', obj.get_transaction_type_display())
+        else:
+            return format_html('<span style="color: red; font-weight: bold;">-{}</span>', obj.get_transaction_type_display())
+    transaction_type_display.short_description = 'Type'
+    
+    def amount_display(self, obj):
+        symbol = '+' if obj.transaction_type == 'CREDIT' else '-'
+        color = 'green' if obj.transaction_type == 'CREDIT' else 'red'
+        amount_formatted = f'{float(obj.amount):,.2f}'
+        return format_html('<span style="color: {}; font-weight: bold;">{}฿{}</span>', color, symbol, amount_formatted)
+    amount_display.short_description = 'Amount'
+    
+    def description_short(self, obj):
+        if len(obj.description) > 50:
+            return obj.description[:50] + '...'
+        return obj.description
+    description_short.short_description = 'Description'
+    
+    def has_add_permission(self, request):
+        # Transactions are created automatically via signals
+        return False

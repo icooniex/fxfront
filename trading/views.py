@@ -825,7 +825,7 @@ def payment_view(request):
 
 @login_required
 def payment_submit_view(request):
-    """Handle payment slip upload"""
+    """Handle payment slip upload with referral code support"""
     if request.method == 'POST':
         package_id = request.POST.get('package_id')
         renew_account_id = request.POST.get('renew_account_id')
@@ -834,8 +834,33 @@ def payment_submit_view(request):
         mt5_password = request.POST.get('mt5_password')
         mt5_server = request.POST.get('mt5_server')
         payment_slip = request.FILES.get('payment_slip')
+        referral_code = request.POST.get('referral_code', '').strip()
         
         package = get_object_or_404(SubscriptionPackage, id=package_id)
+        
+        # Validate referral code if provided
+        ref_code_obj = None
+        applied_discount = 0
+        if referral_code:
+            try:
+                ref_code_obj = ReferralCode.objects.get(code=referral_code, is_active=True)
+                
+                # Check that referrer is not the current user
+                if ref_code_obj.user == request.user:
+                    messages.warning(request, 'ไม่สามารถใช้รหัส referral ของตัวเองได้')
+                    ref_code_obj = None
+                else:
+                    # Apply discount if configured
+                    applied_discount = ref_code_obj.discount_percentage
+                    
+            except ReferralCode.DoesNotExist:
+                messages.warning(request, 'รหัส referral ไม่ถูกต้อง')
+                return redirect('payment')
+        
+        # Calculate payment amount with discount
+        original_amount = package.price
+        discount_amount = (original_amount * applied_discount / 100) if applied_discount > 0 else 0
+        final_amount = original_amount - discount_amount
         
         # Check if this is a renewal
         is_renewal = False
@@ -876,12 +901,13 @@ def payment_submit_view(request):
                 trade_account=trade_account,
                 subscription_package=package,
                 request_type='RENEWAL',
-                payment_amount=package.price,
+                payment_amount=final_amount,  # Use discounted amount
                 payment_status='PENDING',
                 payment_method='Bank Transfer',
                 payment_slip=payment_slip,
                 payment_date=timezone.now(),
-                admin_notes=f'Renewal for account: {trade_account.account_name}'
+                admin_notes=f'Renewal for account: {trade_account.account_name}' + 
+                           (f' | Referral: {referral_code} ({applied_discount}% discount: -฿{discount_amount:.2f})' if ref_code_obj else '')
             )
             
             messages.success(request, f'ส่งหลักฐานการต่ออายุเรียบร้อย รอการตรวจสอบจากทีมงาน')
@@ -900,15 +926,22 @@ def payment_submit_view(request):
                 trade_account=None,  # Will be linked after MT5 setup
                 subscription_package=package,
                 request_type='PURCHASE',
-                payment_amount=package.price,
+                payment_amount=final_amount,  # Use discounted amount
                 payment_status='PENDING',
                 payment_method='Bank Transfer',
                 payment_slip=payment_slip,
                 payment_date=timezone.now(),
-                admin_notes='New purchase - MT5 setup pending'
+                admin_notes='New purchase - MT5 setup pending' + 
+                           (f' | Referral: {referral_code} ({applied_discount}% discount: -฿{discount_amount:.2f})' if ref_code_obj else '')
             )
             
             messages.success(request, 'ส่งหลักฐานการชำระเงินเรียบร้อย รอการตรวจสอบจากทีมงาน')
+        
+        # Store referral code in payment for later processing
+        if ref_code_obj:
+            # Store in a way that we can access it when payment is verified
+            payment.referral_code = ref_code_obj
+            payment.save()
         
         return redirect('payment_pending', payment_id=payment.id)
     
@@ -1708,3 +1741,71 @@ def backtest_strategy_dashboard(request, strategy_id):
         })
     
     return render(request, 'admin/backtest_dashboard.html', context)
+
+
+# ============================================================================
+# REFERRAL SYSTEM VIEWS
+# ============================================================================
+
+from django.db.models import Q, Sum
+from .models import ReferralCode, ReferralEarnings, UserCredit, ReferralTransaction
+
+
+@login_required
+def referral_dashboard(request):
+    """
+    Display referral program dashboard with:
+    - User's referral code
+    - Credit balance (earned vs used)
+    - Active referrals list
+    
+    Note: Referral code is created only after first successful purchase
+    """
+    user = request.user
+    
+    try:
+        # Get user's referral code
+        referral_code = ReferralCode.objects.get(user=user)
+    except ReferralCode.DoesNotExist:
+        # User hasn't made first purchase yet - show message
+        context = {
+            'referral_code': None,
+            'credit_balance': None,
+            'total_earned': 0,
+            'referral_earnings': [],
+            'earnings_count': 0,
+            'active_referrals': 0,
+        }
+        return render(request, 'referral/dashboard.html', context)
+    
+    try:
+        credit_balance = UserCredit.objects.get(user=user)
+    except UserCredit.DoesNotExist:
+        # Create if not exists (fallback)
+        credit_balance = UserCredit.objects.create(user=user, balance=0)
+    
+    # Get referral earnings (active referrals)
+    referral_earnings = ReferralEarnings.objects.filter(
+        referrer=user
+    ).select_related(
+        'referee', 'subscription_package'
+    ).order_by('-created_at')
+    
+    # Aggregate data
+    total_earned = referral_earnings.aggregate(
+        total=Sum('credit_earned')
+    )['total'] or 0
+    
+    context = {
+        'referral_code': referral_code,
+        'credit_balance': credit_balance,
+        'total_earned': total_earned,
+        'referral_earnings': referral_earnings,
+        'earnings_count': referral_earnings.count(),
+        'active_referrals': referral_earnings.filter(
+            referee__is_active=True
+        ).count(),
+    }
+    
+    return render(request, 'referral/dashboard.html', context)
+

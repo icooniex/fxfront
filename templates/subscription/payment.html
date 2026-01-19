@@ -138,6 +138,21 @@
                 <div id="slip-preview" class="mb-0"></div>
             </div>
 
+            <!-- Referral Code Section (Optional) -->
+            <div class="glass-card mt-4 fade-in" style="animation-delay: 0.55s; padding: 24px;">
+                <h5 class="mb-3">รหัส Referral (ไม่บังคับ)</h5>
+                
+                <div class="mb-2">
+                    <label for="referral_code" class="form-label">มีรหัส Referral หรือไม่?</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="referral_code" 
+                           name="referral_code" 
+                           placeholder="เช่น: aB3xY9Zk">
+                    <small class="text-muted">หากมีรหัส Referral คุณอาจได้รับส่วนลดเพิ่มเติม</small>
+                </div>
+            </div>
+
             {% if not renew_account %}
             <!-- Information Section -->
             <div class="glass-card mt-4 fade-in" style="animation-delay: 0.5s; padding: 24px;">
