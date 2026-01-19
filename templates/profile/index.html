@@ -127,16 +127,56 @@
                 </div>
             </div>
 
-            <!-- Action Button -->
-            {% if quota.accounts_used < quota.quota_total %}
-            <a href="{% url 'add_account_from_quota' quota.id %}" class="btn btn-primary-blue" style="width: 100%; font-size: 13px;">
-                <i class="bi bi-plus-circle"></i> เพิ่มบัญชีเทรด
-            </a>
-            {% else %}
-            <button class="btn btn-glass" style="width: 100%; font-size: 13px; opacity: 0.5;" disabled>
-                <i class="bi bi-check-circle"></i> ใช้งานครบแล้ว
-            </button>
+            <!-- Renewal Status Alerts -->
+            {% if quota.pending_renewal %}
+            <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <div style="font-size: 12px; color: #ffc107;">
+                    <i class="bi bi-clock-history me-1"></i>
+                    <strong>รอตรวจสอบการต่ออายุ</strong><br>
+                    <span style="opacity: 0.8;">กำลังตรวจสอบหลักฐานการชำระเงิน</span>
+                </div>
+                <a href="{% url 'payment_pending' quota.pending_renewal.id %}" class="btn btn-glass" style="width: 100%; font-size: 12px; margin-top: 8px;">
+                    <i class="bi bi-eye"></i> ตรวจสอบสถานะ
+                </a>
+            </div>
+            {% elif quota.is_expiring_soon %}
+            <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <div style="font-size: 12px; color: #ffc107;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>ใกล้หมดอายุ</strong><br>
+                    <span style="opacity: 0.8;">เหลือเวลาอีก {{ quota.days_remaining }} วัน</span>
+                </div>
+            </div>
+            {% elif quota.is_expired %}
+            <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <div style="font-size: 12px; color: #ff4444;">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>หมดอายุแล้ว</strong><br>
+                    <span style="opacity: 0.8;">กรุณาต่ออายุเพื่อใช้งานต่อ</span>
+                </div>
+            </div>
             {% endif %}
+
+            <!-- Action Buttons -->
+            <div style="display: grid; gap: 8px;">
+                {% if quota.is_expiring_soon or quota.is_expired %}
+                <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue" style="font-size: 13px;">
+                    <i class="bi bi-arrow-repeat"></i> ต่ออายุแพคเกจ
+                </a>
+                {% endif %}
+                
+                {% if not quota.is_expired %}
+                    {% if quota.accounts_used < quota.quota_total %}
+                    <a href="{% url 'add_account_from_quota' quota.id %}" class="btn {% if quota.is_expiring_soon %}btn-glass{% else %}btn-primary-blue{% endif %}" style="font-size: 13px;">
+                        <i class="bi bi-plus-circle"></i> เพิ่มบัญชีเทรด
+                    </a>
+                    {% else %}
+                    <button class="btn btn-glass" style="font-size: 13px; opacity: 0.5;" disabled>
+                        <i class="bi bi-check-circle"></i> ใช้งานครบแล้ว
+                    </button>
+                    {% endif %}
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
         
@@ -174,152 +214,6 @@
         </div>
         {% endfor %}
         {% endif %}
-
-        <!-- Subscriptions Section -->
-        <div class="section-header" style="margin-top: 20px; margin-bottom: 12px;">
-            <h6 class="section-title" style="font-weight: 600;">บัญชีเทรดทั้งหมด</h6>
-        </div>
-
-        {% if subscriptions %}
-            {% for sub in subscriptions %}
-            <div class="subscription-info glass-card fade-in mb-2" style="animation-delay: 0.{{ forloop.counter }}s; padding: 20px;">
-                <div class="subscription-header">
-                    <span class="subscription-account">{{ sub.account.account_name }}</span>
-                    <span class="badge-glass {% if sub.status == 'ACTIVE' %}badge-active{% elif sub.status == 'EXPIRED' %}badge-down{% elif sub.status == 'PENDING' %}badge-warning{% else %}badge-paused{% endif %}">
-                        {% if sub.status == 'PENDING' %}รอตรวจสอบ{% elif sub.status == 'ACTIVE' %}Active{% elif sub.status == 'EXPIRED' %}หมดอายุ{% else %}{{ sub.get_status_display }}{% endif %}
-                    </span>
-                </div>
-
-                <div class="subscription-details">
-                    <div class="subscription-detail-item">
-                        <span class="subscription-detail-label">แพ็คเกจ</span>
-                        <span class="subscription-detail-value">{{ sub.package.name }}</span>
-                    </div>
-                    <div class="subscription-detail-item">
-                        <span class="subscription-detail-label">ราคา</span>
-                        <span class="subscription-detail-value">฿{{ sub.package.price|floatformat:0 }}</span>
-                    </div>
-                    <div class="subscription-detail-item">
-                        <span class="subscription-detail-label">เริ่มต้น</span>
-                        <span class="subscription-detail-value">{{ sub.start_date|date:"d M y" }}</span>
-                    </div>
-                    <div class="subscription-detail-item">
-                        <span class="subscription-detail-label">หมดอายุ</span>
-                        <span class="subscription-detail-value {% if sub.days_remaining <= 7 %}expiry-warning{% endif %}">
-                            {{ sub.expiry_date|date:"d M y" }}
-                            {% if sub.days_remaining <= 7 %}
-                            <br><small>(เหลือ {{ sub.days_remaining }} วัน)</small>
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-
-                {% if sub.payment_status == 'FAILED' %}
-                <div class="mt-3">
-                    <div class="alert" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
-                        <small class="text-loss">
-                            <i class="bi bi-exclamation-circle me-1"></i>
-                            <strong>การชำระเงินไม่สำเร็จ</strong>
-                            {% if sub.payment_admin_notes %}
-                            <br>{{ sub.payment_admin_notes }}
-                            {% endif %}
-                        </small>
-                    </div>
-                    {% if sub.payment_id %}
-                    <a href="{% url 'payment_reupload' sub.payment_id %}" class="btn btn-danger-glass btn-sm w-100">
-                        <i class="bi bi-upload me-2"></i>อัพโหลดสลิปใหม่
-                    </a>
-                    {% endif %}
-                </div>
-                {% elif sub.has_pending_renewal %}
-                <div class="mt-3">
-                    <div class="alert" style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
-                        <small style="color: #ffc107;">
-                            <i class="bi bi-clock-history me-1"></i>
-                            <strong>รอตรวจสอบการต่ออายุ</strong>
-                            <br>กำลังตรวจสอบหลักฐานการชำระเงิน
-                        </small>
-                    </div>
-                    {% if sub.payment_id %}
-                    <a href="{% url 'payment_pending' sub.payment_id %}" class="btn btn-glass btn-sm w-100">
-                        <i class="bi bi-eye me-2"></i>ตรวจสอบสถานะ
-                    </a>
-                    {% endif %}
-                </div>
-                {% elif sub.status == 'PENDING' and sub.payment_status == 'PENDING' %}
-                <div class="mt-3">
-                    <div class="alert" style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
-                        <small style="color: #ffc107;">
-                            <i class="bi bi-clock-history me-1"></i>
-                            <strong>รอตรวจสอบ</strong>
-                            <br>กำลังตรวจสอบหลักฐานการชำระเงิน
-                        </small>
-                    </div>
-                    {% if sub.payment_id %}
-                    <a href="{% url 'payment_pending' sub.payment_id %}" class="btn btn-glass btn-sm w-100">
-                        <i class="bi bi-clock-history me-2"></i>ตรวจสอบสถานะ
-                    </a>
-                    {% endif %}
-                </div>
-                {% elif sub.days_remaining <= 7 and sub.days_remaining > 0 and sub.status == 'ACTIVE' %}
-                <div class="mt-3">
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'subscription_packages' %}?renew_account={{ sub.account.id }}" class="btn btn-primary-blue btn-sm">
-                            <i class="bi bi-arrow-repeat me-2"></i>ต่ออายุ
-                        </a>
-                        <a href="{% url 'account_mt5_edit' sub.account.id %}" class="btn btn-glass btn-sm">
-                            <i class="bi bi-pencil-square me-2"></i>แก้ไข MT5 Account
-                        </a>
-                    </div>
-                </div>
-                {% elif sub.status == 'EXPIRED' %}
-                <div class="mt-3">
-                    <a href="{% url 'subscription_packages' %}?renew_account={{ sub.account.id }}" class="btn btn-danger-glass btn-sm w-100">
-                        <i class="bi bi-exclamation-triangle me-2"></i>ต่ออายุเดี๋ยวนี้
-                    </a>
-                </div>
-                {% elif sub.status == 'ACTIVE' %}
-                <div class="mt-3">
-                    <a href="{% url 'account_mt5_edit' sub.account.id %}" class="btn btn-glass btn-sm w-100">
-                        <i class="bi bi-pencil-square me-2"></i>แก้ไข MT5 Account
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state glass-card-static">
-                <i class="bi bi-wallet2"></i>
-                <div class="empty-state-title">ยังไม่มีการสมัครสมาชิก</div>
-                <div class="empty-state-text">เริ่มต้นด้วยการเลือกแพ็คเกจ</div>
-                <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue mt-3">
-                    + ซื้อแพ็คเกจ
-                </a>
-            </div>
-        {% endif %}
-
-        <!-- Summary Stats -->
-        <!-- <div class="glass-card mt-3 fade-in" style="animation-delay: 0.4s; padding: 16px;">
-            <h6 class="mb-3" style="font-weight: 600;">สรุป</h6>
-            <div class="row g-2">
-                <div class="col-6">
-                    <div class="text-center p-2" style="background: rgba(255,255,255,0.03); border-radius: 8px;">
-                        <p class="text-muted mb-1" style="font-size: 11px;">บัญชีทั้งหมด</p>
-                        <p class="mb-0" style="font-size: 22px; font-weight: 700; color: var(--primary-blue);">
-                            {{ total_accounts }}
-                        </p>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="text-center p-2" style="background: rgba(255,255,255,0.03); border-radius: 8px;">
-                        <p class="text-muted mb-1" style="font-size: 11px;">บัญชีที่ใช้งาน</p>
-                        <p class="mb-0" style="font-size: 22px; font-weight: 700; color: var(--profit-green);">
-                            {{ active_accounts }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div> -->
 
         <!-- Settings/Actions -->
         <div class="mt-3 d-grid gap-2 fade-in" style="animation-delay: 0.5s;">

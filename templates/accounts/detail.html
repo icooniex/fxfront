@@ -19,10 +19,19 @@
         {% endif %}
 
         <!-- Back Button -->
-        <div class="mb-3">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
             <a href="{% url 'dashboard' %}" class="btn btn-glass btn-sm">
                 <i class="bi bi-arrow-left me-2"></i>กลับ
             </a>
+            {% if can_edit_mt5 %}
+            <a href="{% url 'account_mt5_edit' account.id %}" class="btn btn-glass btn-sm">
+                <i class="bi bi-pencil me-2"></i>แก้ไข MT5
+            </a>
+            {% else %}
+            <button class="btn btn-glass btn-sm" disabled style="opacity: 0.5; cursor: not-allowed;">
+                <i class="bi bi-pencil me-2"></i>หมด Limit
+            </button>
+            {% endif %}
         </div>
 
         <!-- Mini Dashboard with Bot Configuration -->

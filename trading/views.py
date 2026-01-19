@@ -544,12 +544,19 @@ def account_detail_view(request, account_id):
         # This is simplified - in real implementation, calculate actual balance at each date
         equity_data.append([int(date.timestamp() * 1000), float(account.current_balance)])
     
+    # Check MT5 edit limit
+    can_edit_mt5 = False
+    if account.subscription_package:
+        resets_remaining = account.subscription_package.mt5_reset_allowed_per_period - account.current_period_reset_count
+        can_edit_mt5 = resets_remaining > 0
+    
     context = {
         'account': account,
         'open_positions': open_positions,
         'closed_positions': closed_positions,
         'equity_data': equity_data,
-        'available_bots': available_bots
+        'available_bots': available_bots,
+        'can_edit_mt5': can_edit_mt5
     }
     return render(request, 'accounts/detail.html', context)
 
@@ -1064,41 +1071,28 @@ def profile_view(request):
         is_active=True
     ).select_related('subscription_package').order_by('-created_at')
     
-    subscriptions = []
-    for account in trade_accounts:
-        days_remaining = (account.subscription_expiry - timezone.now()).days if account.subscription_expiry else 0
+    # Add expiry info and renewal status to each quota
+    for quota in active_quotas:
+        # Calculate days remaining
+        days_remaining = (quota.expiry_date - timezone.now()).days if quota.expiry_date else 0
+        quota.days_remaining = max(0, days_remaining)
+        quota.is_expiring_soon = days_remaining <= 7 and days_remaining > 0
+        quota.is_expired = days_remaining <= 0
         
-        # Find related payment (latest one)
-        payment = SubscriptionPayment.objects.filter(
+        # Check for pending renewal payments for this package
+        quota.pending_renewal = SubscriptionPayment.objects.filter(
             user=request.user,
-            trade_account=account
-        ).order_by('-created_at').first()
-        
-        # Check if there's a pending renewal payment
-        has_pending_renewal = False
-        if payment and payment.payment_status == 'PENDING' and payment.admin_notes and 'Renewal' in payment.admin_notes:
-            has_pending_renewal = True
-        
-        subscriptions.append({
-            'account': account,
-            'package': account.subscription_package,
-            'status': account.subscription_status,
-            'get_status_display': account.get_subscription_status_display(),
-            'start_date': account.subscription_start,
-            'expiry_date': account.subscription_expiry,
-            'days_remaining': max(0, days_remaining),
-            'payment_id': payment.id if payment else None,
-            'payment_status': payment.payment_status if payment else None,
-            'payment_admin_notes': payment.admin_notes if payment else None,
-            'has_pending_renewal': has_pending_renewal
-        })
+            subscription_package=quota.subscription_package,
+            payment_status=PaymentStatus.PENDING,
+            request_type=RequestType.RENEWAL,
+            is_active=True
+        ).first()
     
     # Calculate totals
     total_accounts = trade_accounts.count()
     active_accounts = trade_accounts.filter(subscription_status='ACTIVE').count()
     
     context = {
-        'subscriptions': subscriptions,
         'total_accounts': total_accounts,
         'active_accounts': active_accounts,
         'active_quotas': active_quotas,
