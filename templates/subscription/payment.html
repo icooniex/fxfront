@@ -40,17 +40,49 @@
                 <span class="text-secondary">ระยะเวลา</span>
                 <span>{{ package.duration_days }} วัน</span>
             </div>
+            
+            <!-- Referral Discount Display (hidden by default) -->
+            <div id="discount-section" style="display: none;">
+                <div class="divider"></div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-secondary">ราคาเต็ม</span>
+                    <span id="original-price" style="text-decoration: line-through; color: var(--text-muted);">
+                        ฿{{ package.price|floatformat:0 }}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span style="color: #10b981; font-weight: 500;">ส่วนลด Referral</span>
+                    <span id="discount-amount" style="color: #10b981; font-weight: 600;">
+                        -฿0
+                    </span>
+                </div>
+            </div>
+            
             <div class="divider"></div>
             <div class="d-flex justify-content-between align-items-center">
                 <span style="font-size: 18px; font-weight: 600;">ยอดชำระ</span>
-                <span style="font-size: 28px; font-weight: 700; color: var(--primary-blue);">
+                <span id="final-price" style="font-size: 28px; font-weight: 700; color: var(--primary-blue);">
                     ฿{{ package.price|floatformat:0 }}
                 </span>
             </div>
         </div>
 
+        <!-- Referral Code Section (moved before QR code) -->
+        <div class="glass-card fade-in mt-4" style="animation-delay: 0.15s; padding: 24px;">
+            <h5 class="mb-3">รหัส Referral (ไม่บังคับ)</h5>
+            
+            <div class="mb-2">
+                <label for="referral_code_preview" class="form-label">มีรหัส Referral หรือไม่?</label>
+                <input type="text" 
+                       class="form-control form-control-glass" 
+                       id="referral_code_preview" 
+                       placeholder="เช่น: aB3xY9Zk">
+                <small id="referral-message" class="text-muted">หากมีรหัส Referral คุณอาจได้รับส่วนลดเพิ่มเติม</small>
+            </div>
+        </div>
+
         <!-- QR Code for PromptPay -->
-        <div class="glass-card fade-in text-center" style="animation-delay: 0.2s; padding: 24px;">
+        <div class="glass-card fade-in text-center mt-4" style="animation-delay: 0.2s; padding: 24px;">
             <h5 class="mb-3">สแกน QR Code</h5>
             <p class="text-secondary mb-3" style="font-size: 14px;">
                 สแกนด้วยแอปฯ Mobile Banking ของคุณ
@@ -138,20 +170,8 @@
                 <div id="slip-preview" class="mb-0"></div>
             </div>
 
-            <!-- Referral Code Section (Optional) -->
-            <div class="glass-card mt-4 fade-in" style="animation-delay: 0.55s; padding: 24px;">
-                <h5 class="mb-3">รหัส Referral (ไม่บังคับ)</h5>
-                
-                <div class="mb-2">
-                    <label for="referral_code" class="form-label">มีรหัส Referral หรือไม่?</label>
-                    <input type="text" 
-                           class="form-control form-control-glass" 
-                           id="referral_code" 
-                           name="referral_code" 
-                           placeholder="เช่น: aB3xY9Zk">
-                    <small class="text-muted">หากมีรหัส Referral คุณอาจได้รับส่วนลดเพิ่มเติม</small>
-                </div>
-            </div>
+            <!-- Referral Code Hidden Input (synced from preview input above) -->
+            <input type="hidden" id="referral_code" name="referral_code" value="">
 
             {% if not renew_account %}
             <!-- Information Section -->
@@ -199,6 +219,111 @@
 
 {% block extra_js %}
 <script>
+    const PACKAGE_PRICE = {{ package.price }};
+    let currentDiscount = 0;
+    let debounceTimer;
+
+    // Add event listener after DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        const referralInput = document.getElementById('referral_code_preview');
+        if (referralInput) {
+            referralInput.addEventListener('input', function() {
+                checkReferralCode(this.value);
+            });
+        }
+    });
+
+    function checkReferralCode(code) {
+        // Clear previous timer
+        clearTimeout(debounceTimer);
+        
+        // Reset if empty
+        if (!code || code.trim() === '') {
+            resetDiscount();
+            return;
+        }
+        
+        // Debounce API call (wait 500ms after user stops typing)
+        debounceTimer = setTimeout(() => {
+            validateReferralCode(code.trim());
+        }, 500);
+    }
+
+    function validateReferralCode(code) {
+        // Sync to hidden input for form submission
+        document.getElementById('referral_code').value = code;
+        
+        const messageEl = document.getElementById('referral-message');
+        messageEl.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังตรวจสอบ...';
+        messageEl.className = 'text-muted';
+
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // Call API to validate referral code
+        fetch('/api/bot/validate-referral-code/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ code: code })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                const discountPercent = data.discount_percentage || 0;
+                applyDiscount(discountPercent);
+                
+                if (discountPercent > 0) {
+                    messageEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> รหัสถูกต้อง! ได้รับส่วนลด ${discountPercent}%`;
+                    messageEl.className = 'text-success';
+                } else {
+                    messageEl.innerHTML = '<i class="bi bi-check-circle"></i> รหัสถูกต้อง';
+                    messageEl.className = 'text-success';
+                }
+            } else {
+                resetDiscount();
+                messageEl.innerHTML = '<i class="bi bi-x-circle-fill"></i> ' + (data.message || 'รหัสไม่ถูกต้อง');
+                messageEl.className = 'text-danger';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resetDiscount();
+            messageEl.innerHTML = '<i class="bi bi-exclamation-triangle"></i> เกิดข้อผิดพลาด กรุณาลองใหม่';
+            messageEl.className = 'text-warning';
+        });
+    }
+
+    function applyDiscount(discountPercent) {
+        if (discountPercent <= 0) {
+            resetDiscount();
+            return;
+        }
+
+        currentDiscount = discountPercent;
+        const discountAmount = PACKAGE_PRICE * (discountPercent / 100);
+        const finalPrice = PACKAGE_PRICE - discountAmount;
+
+        // Show discount section
+        document.getElementById('discount-section').style.display = 'block';
+        
+        // Update amounts with Thai number format
+        const formattedDiscount = discountAmount.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        const formattedFinal = finalPrice.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        
+        document.getElementById('discount-amount').textContent = '-฿' + formattedDiscount;
+        document.getElementById('final-price').textContent = '฿' + formattedFinal;
+    }
+
+    function resetDiscount() {
+        currentDiscount = 0;
+        document.getElementById('discount-section').style.display = 'none';
+        const formattedPrice = PACKAGE_PRICE.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        document.getElementById('final-price').textContent = '฿' + formattedPrice;
+    }
+
     function copyAccountNumber() {
         const accountNumber = 'XXX-X-XXXXX-X';
         navigator.clipboard.writeText(accountNumber).then(() => {

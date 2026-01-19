@@ -10,7 +10,8 @@ from trading.models import (
     TradeTransaction, 
     UserTradeAccount, 
     BotStrategy, 
-    BacktestResult
+    BacktestResult,
+    ReferralCode
 )
 from .authentication import require_bot_api_key
 import json
@@ -1870,3 +1871,57 @@ def update_dd_protection_status(request):
             'peak_balance': str(trade_account.peak_balance)
         }
     }, status=200)
+
+
+@require_http_methods(["POST"])
+@login_required
+def validate_referral_code(request):
+    """
+    Validate referral code and return discount percentage.
+    Used in payment page for real-time discount calculation.
+    """
+    try:
+        data = json.loads(request.body)
+        code = data.get('code', '').strip()
+        
+        if not code:
+            return JsonResponse({
+                'valid': False,
+                'message': 'กรุณากรอกรหัส Referral'
+            })
+        
+        # Check if code exists and is active
+        try:
+            referral = ReferralCode.objects.get(code=code, is_active=True)
+        except ReferralCode.DoesNotExist:
+            return JsonResponse({
+                'valid': False,
+                'message': 'รหัส Referral ไม่ถูกต้อง'
+            })
+        
+        # Check that user is not trying to use their own code
+        if referral.user == request.user:
+            return JsonResponse({
+                'valid': False,
+                'message': 'ไม่สามารถใช้รหัส Referral ของตัวเองได้'
+            })
+        
+        # Return valid code with discount info
+        return JsonResponse({
+            'valid': True,
+            'discount_percentage': float(referral.discount_percentage),
+            'code_owner': referral.user.username,
+            'description': referral.description
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'valid': False,
+            'message': 'ข้อมูลไม่ถูกต้อง'
+        }, status=400)
+    except Exception as e:
+        logger.error(f"Error validating referral code: {e}")
+        return JsonResponse({
+            'valid': False,
+            'message': 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
+        }, status=500)

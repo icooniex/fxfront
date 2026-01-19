@@ -29,5 +29,8 @@ urlpatterns = [
     path('bot/strategies/', views.get_bot_strategies, name='api_bot_strategies'),
     path('bot/backtest-result/', views.submit_backtest_result, name='api_submit_backtest_result'),
     path('bot/optimization-result/', views.submit_optimization_result, name='api_submit_optimization_result'),
+    
+    # Referral system
+    path('validate-referral-code/', views.validate_referral_code, name='api_validate_referral_code'),
 ]
 
