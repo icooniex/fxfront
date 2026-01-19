@@ -8,7 +8,8 @@ from .models import (
     SubscriptionPayment,
     BotAPIKey,
     BotStrategy,
-    BacktestResult
+    BacktestResult,
+    UserPackageQuota
 )
 import secrets
 
@@ -466,4 +467,149 @@ class BacktestResultAdmin(admin.ModelAdmin):
             )
         return "No trading graph image"
     trading_graph_preview.short_description = 'Trading Graph Preview'
+
+
+@admin.register(UserPackageQuota)
+class UserPackageQuotaAdmin(admin.ModelAdmin):
+    list_display = [
+        'user',
+        'subscription_package',
+        'quota_usage_display',
+        'status',
+        'start_date',
+        'expiry_date',
+        'days_remaining_display',
+        'is_active'
+    ]
+    list_filter = ['status', 'is_active', 'subscription_package', 'start_date', 'expiry_date']
+    search_fields = ['user__username', 'user__email', 'subscription_package__name']
+    readonly_fields = ['created_at', 'updated_at', 'quota_progress_bar', 'related_accounts_display']
+    raw_id_fields = ['user', 'subscription_package']
+    date_hierarchy = 'expiry_date'
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('User & Package', {
+            'fields': ('user', 'subscription_package', 'status')
+        }),
+        ('Quota Information', {
+            'fields': ('quota_total', 'accounts_used', 'quota_progress_bar')
+        }),
+        ('Subscription Period', {
+            'fields': ('start_date', 'expiry_date')
+        }),
+        ('Related Accounts', {
+            'fields': ('related_accounts_display',),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': ('is_active', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def quota_usage_display(self, obj):
+        """Display quota usage with color coding"""
+        percentage = (obj.accounts_used / obj.quota_total * 100) if obj.quota_total > 0 else 0
+        
+        if percentage >= 100:
+            color = '#ef4444'  # red
+        elif percentage >= 80:
+            color = '#f59e0b'  # orange
+        else:
+            color = '#22c55e'  # green
+            
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{} / {}</span> <span style="color: #6b7280; font-size: 11px;">({}%)</span>',
+            color,
+            obj.accounts_used,
+            obj.quota_total,
+            int(percentage)
+        )
+    quota_usage_display.short_description = 'Quota Usage'
+
+    def days_remaining_display(self, obj):
+        """Display days remaining with color coding"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if obj.expiry_date:
+            days = (obj.expiry_date - timezone.now()).days
+            
+            if days < 0:
+                return format_html('<span style="color: #ef4444; font-weight: bold;">Expired</span>')
+            elif days <= 7:
+                return format_html('<span style="color: #f59e0b; font-weight: bold;">{} days</span>', days)
+            else:
+                return format_html('<span style="color: #22c55e;">{} days</span>', days)
+        return '-'
+    days_remaining_display.short_description = 'Days Remaining'
+
+    def quota_progress_bar(self, obj):
+        """Visual progress bar for quota usage"""
+        percentage = (obj.accounts_used / obj.quota_total * 100) if obj.quota_total > 0 else 0
+        
+        if percentage >= 100:
+            bar_color = '#ef4444'
+        elif percentage >= 80:
+            bar_color = '#f59e0b'
+        else:
+            bar_color = '#3b82f6'
+            
+        return format_html(
+            '''
+            <div style="width: 100%; background: #e5e7eb; border-radius: 10px; height: 20px; position: relative; overflow: hidden;">
+                <div style="width: {}%; background: {}; height: 100%; border-radius: 10px; transition: width 0.3s;"></div>
+                <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #1f2937;">
+                    {} / {} accounts ({}%)
+                </span>
+            </div>
+            ''',
+            min(percentage, 100),
+            bar_color,
+            obj.accounts_used,
+            obj.quota_total,
+            int(percentage)
+        )
+    quota_progress_bar.short_description = 'Quota Progress'
+
+    def related_accounts_display(self, obj):
+        """Display all trade accounts created under this quota"""
+        from django.utils import timezone
+        
+        accounts = UserTradeAccount.objects.filter(
+            user=obj.user,
+            subscription_package=obj.subscription_package,
+            subscription_start__gte=obj.start_date,
+            subscription_expiry__lte=obj.expiry_date,
+            is_active=True
+        ).order_by('-created_at')
+        
+        if not accounts.exists():
+            return format_html('<em style="color: #6b7280;">No accounts created yet</em>')
+        
+        html = '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">'
+        html += '<tr style="background: #f3f4f6;"><th style="padding: 8px; text-align: left;">Account Name</th><th style="padding: 8px; text-align: left;">MT5 ID</th><th style="padding: 8px; text-align: left;">Status</th><th style="padding: 8px; text-align: left;">Created</th></tr>'
+        
+        for account in accounts:
+            status_colors = {
+                'ACTIVE': '#22c55e',
+                'EXPIRED': '#ef4444',
+                'PENDING': '#f59e0b',
+                'SUSPENDED': '#6b7280'
+            }
+            status_color = status_colors.get(account.subscription_status, '#6b7280')
+            
+            html += f'''
+            <tr>
+                <td style="padding: 8px;"><a href="/admin/trading/usertradeaccount/{account.id}/change/" target="_blank">{account.account_name}</a></td>
+                <td style="padding: 8px;">{account.mt5_account_id}</td>
+                <td style="padding: 8px;"><span style="background: {status_color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">{account.get_subscription_status_display()}</span></td>
+                <td style="padding: 8px; color: #6b7280; font-size: 12px;">{account.created_at.strftime("%d/%m/%Y %H:%M")}</td>
+            </tr>
+            '''
+        
+        html += '</table>'
+        return format_html(html)
+    related_accounts_display.short_description = 'Related Trade Accounts'
 

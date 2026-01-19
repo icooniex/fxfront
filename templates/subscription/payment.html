@@ -135,20 +135,7 @@
                 </div>
 
                 <!-- Preview Area -->
-                <div id="slip-preview" class="mb-3"></div>
-
-                {% if not renew_account %}
-                <div class="mb-0">
-                    <label for="account_name" class="form-label">ชื่อบัญชีเทรด</label>
-                    <input type="text" 
-                           class="form-control form-control-glass" 
-                           id="account_name" 
-                           name="account_name" 
-                           placeholder="ตั้งชื่อบัญชีเทรดของคุณ"
-                           disabled>
-                    <small class="text-muted">คุณจะสามารถตั้งชื่อบัญชีได้หลังจากการชำระเงินสำเร็จ</small>
-                </div>
-                {% endif %}
+                <div id="slip-preview" class="mb-0"></div>
             </div>
 
             {% if not renew_account %}

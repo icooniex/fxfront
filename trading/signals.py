@@ -4,7 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import (
     SubscriptionPayment, UserTradeAccount, PaymentStatus, 
-    SubscriptionStatus, BotStrategy, RequestType
+    SubscriptionStatus, BotStrategy, RequestType, UserPackageQuota
 )
 import logging
 
@@ -43,9 +43,22 @@ def handle_payment_status_change(sender, instance, **kwargs):
             
             # Handle different request types
             if instance.request_type == RequestType.PURCHASE:
-                # New purchase - trade_account will be created during MT5 setup
+                # New purchase - create quota for this package
+                package = instance.subscription_package
+                
+                # Create UserPackageQuota
+                UserPackageQuota.objects.create(
+                    user=instance.user,
+                    subscription_package=package,
+                    quota_total=package.max_accounts,
+                    accounts_used=0,
+                    start_date=timezone.now(),
+                    expiry_date=timezone.now() + timedelta(days=package.duration_days),
+                    status=SubscriptionStatus.ACTIVE
+                )
+                
+                logger.info(f"Created package quota for user {instance.user.username}: {package.max_accounts} accounts")
                 # TODO: Send LINE/SMS notification with setup link
-                logger.info(f"New purchase approved for user {instance.user.username}, waiting for MT5 setup")
                 
             elif instance.request_type == RequestType.RENEWAL:
                 # Renewal - extend existing account subscription

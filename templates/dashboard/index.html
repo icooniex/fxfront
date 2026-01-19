@@ -17,6 +17,46 @@
             <i class="bi bi-arrow-down-circle spinner-primary"></i>
         </div>
 
+        <!-- Pending Purchase Alert -->
+        {% if pending_purchases %}
+        <div class="glass-card-static mb-4 fade-in" style="background: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 16px;">
+            <div style="display: flex; align-items: start; gap: 12px;">
+                <div style="flex-shrink: 0;">
+                    <i class="bi bi-clock-history" style="font-size: 24px; color: #ffc107;"></i>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 8px 0;">
+                        มีแพคเกจรอการยืนยัน
+                    </h3>
+                    {% for payment in pending_purchases %}
+                    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 10px 12px; margin-bottom: {% if not forloop.last %}8px{% else %}0{% endif %};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                                {{ payment.subscription_package.name }}
+                            </span>
+                            <span style="font-size: 13px; font-weight: 600; color: #ffc107;">
+                                ฿{{ payment.payment_amount|floatformat:0 }}
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; color: var(--text-muted);">
+                                ชำระเมื่อ {{ payment.payment_date|date:"d/m/Y H:i" }}
+                            </span>
+                            <a href="{% url 'payment_pending' payment.id %}" style="font-size: 12px; color: var(--primary-blue); text-decoration: none;">
+                                ตรวจสอบสถานะ <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <p style="font-size: 12px; color: var(--text-muted); margin: 12px 0 0 0;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        ทีมงานกำลังตรวจสอบการชำระเงิน ใช้เวลาประมาณ 5-15 นาที
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Today's High Impact News -->
 
         {% comment %}
@@ -177,9 +217,23 @@
                     <i class="bi bi-wallet2"></i>
                     <div class="empty-state-title">ยังไม่มีบัญชีเทรด</div>
                     <div class="empty-state-text">เริ่มต้นด้วยการเพิ่มบัญชีเทรดของคุณ</div>
+                    {% if active_quotas %}
+                        {% with quota=active_quotas.0 %}
+                        {% if quota.accounts_used < quota.quota_total %}
+                        <a href="{% url 'add_account_from_quota' quota.id %}" class="btn btn-primary-blue mt-3">
+                            + เพิ่มบัญชีเทรด
+                        </a>
+                        {% else %}
+                        <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue mt-3">
+                            <i class="bi bi-box-seam me-2" style="color: var(--primary-blue);"></i>ซื้อแพคเกจใหม่
+                        </a>
+                        {% endif %}
+                        {% endwith %}
+                    {% else %}
                     <a href="{% url 'subscription_packages' %}" class="btn btn-primary-blue mt-3">
-                        + เพิ่มบัญชีเทรด
+                        + ซื้อแพคเกจ
                     </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
@@ -187,9 +241,23 @@
         <!-- Add Account Button -->
         {% if accounts %}
         <div class="mt-4 text-center fade-in">
+            {% if active_quotas %}
+                {% with quota=active_quotas.0 %}
+                {% if quota.accounts_used < quota.quota_total %}
+                <a href="{% url 'add_account_from_quota' quota.id %}" class="btn btn-glass">
+                    + เพิ่มบัญชีเทรด
+                </a>
+                {% else %}
+                <a href="{% url 'subscription_packages' %}" class="btn btn-glass">
+                    <i class="bi bi-box-seam me-2" style="color: var(--primary-blue);"></i>ซื้อแพคเกจใหม่
+                </a>
+                {% endif %}
+                {% endwith %}
+            {% else %}
             <a href="{% url 'subscription_packages' %}" class="btn btn-glass">
-                + เพิ่มบัญชีเทรด
+                + ซื้อแพคเกจ
             </a>
+            {% endif %}
         </div>
         {% endif %}
     </div>

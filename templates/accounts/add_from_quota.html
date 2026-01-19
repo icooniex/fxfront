@@ -1,49 +1,42 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}ตั้งค่าบัญชี MT5 - FX Bot Monitor{% endblock %}
+{% block title %}เพิ่มบัญชีเทรด - FX Bot Monitor{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
     <div class="container-mobile">
         <!-- Header -->
         <div class="mb-4 fade-in">
-            <a href="{% url 'payment_pending' payment.id %}" class="btn btn-glass btn-sm mb-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-glass btn-sm mb-2">
                 <i class="bi bi-arrow-left me-1"></i> กลับ
             </a>
-            <h1 class="mb-1">ตั้งค่าบัญชี MT5</h1>
-            <p class="text-secondary mb-0" style="font-size: 14px;">กรอกข้อมูลบัญชี MT5 เพื่อเริ่มใช้งาน</p>
+            <h1 class="mb-1">เพิ่มบัญชีเทรด</h1>
+            <p class="text-secondary mb-0" style="font-size: 14px;">จากแพคเกจ {{ package.name }}</p>
         </div>
 
-        <!-- Success Message -->
+        <!-- Package Info -->
         <div class="glass-card fade-in mb-3" style="animation-delay: 0.1s; padding: 20px;">
             <div class="d-flex align-items-start">
                 <div class="me-3">
-                    <i class="bi bi-check-circle-fill" style="font-size: 32px; color: var(--profit-green);"></i>
+                    <i class="bi bi-box-seam" style="font-size: 28px; color: var(--primary-blue);"></i>
                 </div>
-                <div style="flex: 1;">
-                    <h5 class="mb-2" style="font-weight: 600; color: var(--profit-green);">การชำระเงินสำเร็จ</h5>
-                    <p class="text-muted mb-2" style="font-size: 13px;">
-                        แพ็คเกจ: <strong>{{ package.name }}</strong> ({{ package.duration_days }} วัน)
+                <div>
+                    <h6 class="mb-2" style="font-weight: 600;">{{ package.name }}</h6>
+                    <p class="mb-2" style="font-size: 13px; color: var(--text-secondary);">
+                        ใช้ไปแล้ว {{ quota.accounts_used }} จาก {{ quota.quota_total }} บัญชี
                     </p>
-                    <p class="text-muted mb-2" style="font-size: 13px;">
-                        ยอดชำระ: <strong class="text-primary-blue">฿{{ payment.payment_amount|floatformat:0 }}</strong>
+                    <p class="mb-0">
+                        <span class="badge-glass badge-active" style="font-size: 13px;">
+                            <i class="bi bi-plus-circle me-1"></i>เพิ่มได้อีก {{ remaining_slots }} บัญชี
+                        </span>
                     </p>
-                    {% if quota %}
-                    <div style="background: rgba(21, 139, 249, 0.1); border: 1px solid rgba(21, 139, 249, 0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px;">
-                        <p class="mb-0" style="font-size: 12px; color: var(--text-muted);">
-                            <i class="bi bi-info-circle me-1" style="color: var(--primary-blue);"></i>
-                            คุณสามารถสร้างบัญชีได้ <strong style="color: var(--primary-blue);">{{ quota.quota_total }}</strong> บัญชี
-                            (กำลังสร้างบัญชีที่ {{ quota.accounts_used|add:1 }}/{{ quota.quota_total }})
-                        </p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- MT5 Setup Form -->
-        <form method="post" enctype="multipart/form-data">
+        <form method="post">
             {% csrf_token %}
 
             <!-- Account Name -->
@@ -56,7 +49,7 @@
                            class="form-control form-control-glass" 
                            id="account_name" 
                            name="account_name" 
-                           placeholder="เช่น: Bot Account 1, My Trading"
+                           placeholder="เช่น: Bot Account 2, Trading Pro"
                            required>
                     <small class="text-muted">ใช้สำหรับแยกแยะบัญชีต่างๆ ของคุณ</small>
                 </div>
@@ -131,11 +124,11 @@
             <div class="glass-card fade-in" style="animation-delay: 0.5s; padding: 24px;">
                 <div class="d-grid">
                     <button type="submit" class="btn btn-primary-blue btn-lg">
-                        <i class="bi bi-check-circle me-2"></i>เริ่มใช้งาน
+                        <i class="bi bi-plus-circle me-2"></i>เพิ่มบัญชีเทรด
                     </button>
                 </div>
                 <p class="text-center text-muted mt-3 mb-0" style="font-size: 12px;">
-                    หลังจากตั้งค่าสำเร็จ ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง
+                    หลังจากเพิ่มบัญชีสำเร็จ ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง
                 </p>
             </div>
         </form>

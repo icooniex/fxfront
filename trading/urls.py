@@ -37,6 +37,9 @@ urlpatterns = [
     path('account/<int:account_id>/mt5/edit/', views.account_mt5_edit_view, name='account_mt5_edit'),
     path('account/<int:account_id>/mt5/reset/submit/', views.account_mt5_reset_submit_view, name='account_mt5_reset_submit'),
     
+    # Add account from quota
+    path('quota/<int:quota_id>/add-account/', views.add_account_from_quota_view, name='add_account_from_quota'),
+    
     # Profile
     path('profile/', views.profile_view, name='profile'),
     

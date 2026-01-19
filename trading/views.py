@@ -419,7 +419,29 @@ def line_disconnect_view(request):
 @login_required
 def dashboard_view(request):
     """Main dashboard showing all trading accounts"""
+    from .models import UserPackageQuota
+    
     accounts = UserTradeAccount.objects.filter(user=request.user, is_active=True).select_related('active_bot')
+    
+    # Get active package quotas
+    active_quotas = UserPackageQuota.objects.filter(
+        user=request.user,
+        status=SubscriptionStatus.ACTIVE,
+        expiry_date__gte=timezone.now(),
+        is_active=True
+    ).select_related('subscription_package')
+    
+    # Add remaining accounts count to each quota
+    for quota in active_quotas:
+        quota.remaining_accounts = quota.quota_total - quota.accounts_used
+    
+    # Get pending purchase payments
+    pending_purchases = SubscriptionPayment.objects.filter(
+        user=request.user,
+        payment_status=PaymentStatus.PENDING,
+        request_type=RequestType.PURCHASE,
+        is_active=True
+    ).select_related('subscription_package').order_by('-created_at')
     
     # Enrich accounts with additional data
     for account in accounts:
@@ -455,6 +477,8 @@ def dashboard_view(request):
     
     context = {
         'accounts': accounts,
+        'active_quotas': active_quotas,
+        'pending_purchases': pending_purchases,
         'today_news': today_news,
     }
     return render(request, 'dashboard/index.html', context)
@@ -933,6 +957,8 @@ def payment_reupload_view(request, payment_id):
 @login_required
 def setup_mt5_account_view(request, payment_id):
     """MT5 Account Setup after payment approval"""
+    from .models import UserPackageQuota
+    
     payment = get_object_or_404(
         SubscriptionPayment,
         id=payment_id,
@@ -941,6 +967,22 @@ def setup_mt5_account_view(request, payment_id):
         trade_account__isnull=True,  # Only for new purchases without account
         request_type=RequestType.PURCHASE
     )
+    
+    # Find the associated quota (should be created by signal handler)
+    quota = UserPackageQuota.objects.filter(
+        user=request.user,
+        subscription_package=payment.subscription_package,
+        status=SubscriptionStatus.ACTIVE,
+        is_active=True
+    ).order_by('-created_at').first()
+    
+    if not quota:
+        messages.error(request, 'ไม่พบแพคเกจที่ใช้งานได้ กรุณาติดต่อทีมงาน')
+        return redirect('dashboard')
+    
+    if quota.accounts_used >= quota.quota_total:
+        messages.error(request, 'คุณใช้โควต้าครบแล้ว')
+        return redirect('dashboard')
     
     if request.method == 'POST':
         account_name = request.POST.get('account_name')
@@ -968,8 +1010,8 @@ def setup_mt5_account_view(request, payment_id):
             broker_name=broker_name,
             mt5_server=mt5_server,
             subscription_package=payment.subscription_package,
-            subscription_start=timezone.now(),
-            subscription_expiry=timezone.now() + timedelta(days=payment.subscription_package.duration_days),
+            subscription_start=quota.start_date,
+            subscription_expiry=quota.expiry_date,
             subscription_status=SubscriptionStatus.ACTIVE,  # Already paid!
             bot_status=BotStatus.PAUSED
         )
@@ -979,12 +1021,17 @@ def setup_mt5_account_view(request, payment_id):
         payment.admin_notes = f'MT5 setup completed - {account_name}'
         payment.save()
         
+        # Increment quota usage
+        quota.accounts_used += 1
+        quota.save()
+        
         messages.success(request, 'ตั้งค่าบัญชีสำเร็จ! ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง')
         return redirect('dashboard')
     
     context = {
         'payment': payment,
-        'package': payment.subscription_package
+        'package': payment.subscription_package,
+        'quota': quota
     }
     return render(request, 'subscription/setup_mt5.html', context)
 
@@ -996,8 +1043,26 @@ def setup_mt5_account_view(request, payment_id):
 @login_required
 def profile_view(request):
     """User profile and subscription management"""
+    from .models import UserPackageQuota
+    
     # Get all subscriptions
     trade_accounts = UserTradeAccount.objects.filter(user=request.user, is_active=True)
+    
+    # Get active package quotas
+    active_quotas = UserPackageQuota.objects.filter(
+        user=request.user,
+        status=SubscriptionStatus.ACTIVE,
+        expiry_date__gte=timezone.now(),
+        is_active=True
+    ).select_related('subscription_package')
+    
+    # Get pending purchase payments
+    pending_purchases = SubscriptionPayment.objects.filter(
+        user=request.user,
+        payment_status=PaymentStatus.PENDING,
+        request_type=RequestType.PURCHASE,
+        is_active=True
+    ).select_related('subscription_package').order_by('-created_at')
     
     subscriptions = []
     for account in trade_accounts:
@@ -1035,7 +1100,9 @@ def profile_view(request):
     context = {
         'subscriptions': subscriptions,
         'total_accounts': total_accounts,
-        'active_accounts': active_accounts
+        'active_accounts': active_accounts,
+        'active_quotas': active_quotas,
+        'pending_purchases': pending_purchases
     }
     return render(request, 'profile/index.html', context)
 
@@ -1517,6 +1584,76 @@ def account_mt5_reset_submit_view(request, account_id):
     
     messages.success(request, 'ส่งคำขอแก้ไขข้อมูล MT5 เรียบร้อย รอการตรวจสอบจากทีมงาน')
     return redirect('payment_pending', payment_id=payment.id)
+
+
+@login_required
+def add_account_from_quota_view(request, quota_id):
+    """Add new MT5 account from existing package quota"""
+    from .models import UserPackageQuota
+    
+    quota = get_object_or_404(
+        UserPackageQuota,
+        id=quota_id,
+        user=request.user,
+        status=SubscriptionStatus.ACTIVE,
+        is_active=True
+    )
+    
+    # Check if quota is still valid
+    if quota.expiry_date < timezone.now():
+        messages.error(request, 'แพคเกจนี้หมดอายุแล้ว กรุณาต่ออายุ')
+        return redirect('profile')
+    
+    # Check if quota has available slots
+    if quota.accounts_used >= quota.quota_total:
+        messages.error(request, 'ใช้ quota ครบแล้ว ไม่สามารถเพิ่มบัญชีได้')
+        return redirect('profile')
+    
+    if request.method == 'POST':
+        account_name = request.POST.get('account_name')
+        mt5_account_id = request.POST.get('mt5_account_id')
+        mt5_password = request.POST.get('mt5_password')
+        mt5_server = request.POST.get('mt5_server')
+        broker_name = request.POST.get('broker_name', 'Pending Setup')
+        
+        # Validate required fields
+        if not all([account_name, mt5_account_id, mt5_password, mt5_server]):
+            messages.error(request, 'กรุณากรอกข้อมูลให้ครบถ้วน')
+            return redirect('add_account_from_quota', quota_id=quota.id)
+        
+        # Check if MT5 account already exists for this user
+        if UserTradeAccount.objects.filter(user=request.user, mt5_account_id=mt5_account_id).exists():
+            messages.error(request, 'บัญชี MT5 นี้ถูกใช้งานแล้ว')
+            return redirect('add_account_from_quota', quota_id=quota.id)
+        
+        # Create trade account
+        trade_account = UserTradeAccount.objects.create(
+            user=request.user,
+            account_name=account_name,
+            mt5_account_id=mt5_account_id,
+            mt5_password=mt5_password,  # TODO: Should encrypt this
+            broker_name=broker_name,
+            mt5_server=mt5_server,
+            subscription_package=quota.subscription_package,
+            subscription_start=quota.start_date,
+            subscription_expiry=quota.expiry_date,
+            subscription_status=SubscriptionStatus.ACTIVE,
+            bot_status=BotStatus.PAUSED
+        )
+        
+        # Update quota usage
+        quota.accounts_used += 1
+        quota.save()
+        
+        messages.success(request, f'เพิ่มบัญชี {account_name} สำเร็จ! ทีมงานจะติดตั้ง Bot ให้ภายใน 24 ชั่วโมง')
+        return redirect('dashboard')
+    
+    context = {
+        'quota': quota,
+        'package': quota.subscription_package,
+        'remaining_slots': quota.quota_total - quota.accounts_used
+    }
+    return render(request, 'accounts/add_from_quota.html', context)
 
 @login_required
 def backtest_strategy_dashboard(request, strategy_id):
