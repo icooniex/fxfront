@@ -1019,7 +1019,7 @@ def setup_mt5_account_view(request, payment_id):
             subscription_package=payment.subscription_package,
             subscription_start=quota.start_date,
             subscription_expiry=quota.expiry_date,
-            subscription_status=SubscriptionStatus.ACTIVE,  # Already paid!
+            subscription_status=SubscriptionStatus.PENDING,  # Wait for admin to setup and activate
             bot_status=BotStatus.PAUSED
         )
         
@@ -1631,7 +1631,7 @@ def add_account_from_quota_view(request, quota_id):
             subscription_package=quota.subscription_package,
             subscription_start=quota.start_date,
             subscription_expiry=quota.expiry_date,
-            subscription_status=SubscriptionStatus.ACTIVE,
+            subscription_status=SubscriptionStatus.PENDING,  # Wait for admin to setup and activate
             bot_status=BotStatus.PAUSED
         )
         
