@@ -230,6 +230,15 @@
         font-weight: 600;
     }
     
+    .badge-other {
+        background: rgba(255, 193, 7, 0.15);
+        color: #ffc107;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
     .badge-long {
         background: rgba(21, 139, 249, 0.15);
         color: #158bf9;
@@ -392,7 +401,7 @@
     
     <!-- Equity Curve Chart (40% height) -->
     <div class="chart-container" style="height: 350px;">
-        <h3 class="chart-title">
+        <h3 class="chart-title" id="equityCurveTitle">
             <i class="bi bi-graph-up-arrow"></i> Equity Curve
         </h3>
         <div class="chart-wrapper" style="height: calc(100% - 45px);">
@@ -417,7 +426,7 @@
                     <th>Entry Price</th>
                     <th>Exit Price</th>
                     <th>P&L</th>
-                    <th>Result</th>
+                    <th>Reason</th>
                     <th>Cumulative</th>
                 </tr>
             </thead>
@@ -513,7 +522,7 @@ function prepareChartData(trades) {
             x: new Date(trade.exit_time),
             y: trade.exit_price,
             pnl: trade.pnl,
-            hit: trade.hit,
+            reason: trade.reason,
             index: index
         });
         
@@ -637,7 +646,7 @@ function initTradeLogChart(chartData) {
                             return [
                                 `Price: ${point.y.toFixed(3)}`,
                                 `P&L: ${point.pnl > 0 ? '+' : ''}${point.pnl.toFixed(2)}`,
-                                `Direction: ${point.direction || point.hit}`
+                                `Direction: ${point.direction || point.reason}`
                             ];
                         }
                     }
@@ -680,6 +689,12 @@ function initEquityCurveChart(chartData) {
     
     // Find initial value (first trade's cumulative - first trade's pnl)
     const initialValue = tradesData.length > 0 ? tradesData[0].cumulative - tradesData[0].pnl : 0;
+    
+    // Update chart title with initial balance
+    const titleElement = document.getElementById('equityCurveTitle');
+    if (titleElement) {
+        titleElement.innerHTML = `<i class="bi bi-graph-up-arrow"></i> Equity Curve (Initial: $${initialValue.toFixed(2)})`;
+    }
     
     equityCurveChart = new Chart(ctx, {
         type: 'line',
@@ -797,7 +812,7 @@ function renderTradesTable() {
         const row = document.createElement('tr');
         
         const pnlClass = trade.pnl > 0 ? 'text-profit' : 'text-loss';
-        const hitBadgeClass = trade.hit === 'TP' ? 'badge-tp' : 'badge-sl';
+        const reasonBadgeClass = trade.reason === 'TP' ? 'badge-tp' : (trade.reason === 'SL' ? 'badge-sl' : 'badge-other');
         const directionBadgeClass = trade.direction === 'LONG' ? 'badge-long' : 'badge-short';
         
         row.innerHTML = `
@@ -809,7 +824,7 @@ function renderTradesTable() {
             <td>${trade.entry_price.toFixed(3)}</td>
             <td>${trade.exit_price.toFixed(3)}</td>
             <td class="${pnlClass}">${trade.pnl > 0 ? '+' : ''}${trade.pnl.toFixed(2)}</td>
-            <td><span class="${hitBadgeClass}">${trade.hit}</span></td>
+            <td><span class="${reasonBadgeClass}">${trade.reason}</span></td>
             <td>${trade.cumulative.toFixed(2)}</td>
         `;
         
