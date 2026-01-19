@@ -19,6 +19,7 @@ urlpatterns = [
     
     # Admin Dashboard (for staff only)
     path('bo/monitor/', views.admin_dashboard_view, name='admin_dashboard'),
+    path('bo/backtests/strategy/<int:strategy_id>/', views.backtest_strategy_dashboard, name='backtest_strategy_dashboard'),
     
     # Accounts
     path('accounts/', views.accounts_list_view, name='accounts_list'),
