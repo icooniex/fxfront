@@ -118,11 +118,62 @@
     
     .metric-label {
         font-size: 9px;
-        color: var(--text-muted);
+        color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 3px;
         font-weight: 400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+    
+    .metric-info-icon {
+        font-size: 10px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+        position: relative;
+    }
+    
+    .metric-info-icon:hover {
+        opacity: 1;
+    }
+    
+    .metric-tooltip {
+        display: none;
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.95);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        white-space: nowrap;
+        font-size: 11px;
+        z-index: 1000;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+    
+    .metric-tooltip.show {
+        display: block;
+    }
+    
+    .metric-tooltip::before {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.95);
     }
     
     .metric-value {
@@ -257,6 +308,24 @@
         font-weight: 600;
     }
     
+    .badge-long-a-short-b {
+        background: rgba(21, 139, 249, 0.15);
+        color: #158bf9;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .badge-short-a-long-b {
+        background: rgba(255, 68, 68, 0.15);
+        color: #ff4444;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -354,35 +423,60 @@
     <!-- Metrics Cards -->
     <div class="metrics-grid">
         <div class="metric-card">
-            <div class="metric-label">Net Profit</div>
+            <div class="metric-label">
+                Net Profit
+                <i class="bi bi-info-circle-fill metric-info-icon" onclick="toggleMetricTooltip(event)">
+                    <span class="metric-tooltip">Total profit/loss as percentage of initial capital</span>
+                </i>
+            </div>
             <div class="metric-value {% if profit_percent > 0 %}profit{% elif profit_percent < 0 %}loss{% else %}neutral{% endif %}">
                 {% if profit_percent > 0 %}+{% endif %}{{ profit_percent }}%
             </div>
         </div>
         
         <div class="metric-card">
-            <div class="metric-label">Trades</div>
+            <div class="metric-label">
+                Trades
+                <i class="bi bi-info-circle-fill metric-info-icon" onclick="toggleMetricTooltip(event)">
+                    <span class="metric-tooltip">Total number of trades executed during backtest period</span>
+                </i>
+            </div>
             <div class="metric-value" style="color: var(--text-primary);">
                 {{ backtest.total_trades }}
             </div>
         </div>
         
         <div class="metric-card">
-            <div class="metric-label">Win Rate</div>
+            <div class="metric-label">
+                Win Rate
+                <i class="bi bi-info-circle-fill metric-info-icon" onclick="toggleMetricTooltip(event)">
+                    <span class="metric-tooltip">Percentage of profitable trades out of total trades</span>
+                </i>
+            </div>
             <div class="metric-value" style="color: var(--text-primary);">
                 {{ backtest.win_rate }}%
             </div>
         </div>
         
         <div class="metric-card">
-            <div class="metric-label">Max Drawdown %</div>
+            <div class="metric-label">
+                Max Drawdown %
+                <i class="bi bi-info-circle-fill metric-info-icon" onclick="toggleMetricTooltip(event)">
+                    <span class="metric-tooltip">Maximum peak-to-trough decline in account balance</span>
+                </i>
+            </div>
             <div class="metric-value loss">
                 {{ backtest.max_drawdown_percent }}%
             </div>
         </div>
         
         <div class="metric-card">
-            <div class="metric-label">Profit Factor</div>
+            <div class="metric-label">
+                Profit Factor
+                <i class="bi bi-info-circle-fill metric-info-icon" onclick="toggleMetricTooltip(event)">
+                    <span class="metric-tooltip">Ratio of gross profit to gross loss (>1 is profitable)</span>
+                </i>
+            </div>
             <div class="metric-value {% if profit_factor >= 2 %}profit{% elif profit_factor >= 1 %}neutral{% else %}loss{% endif %}">
                 {{ profit_factor|floatformat:2 }}
             </div>
@@ -471,6 +565,32 @@ const fallbackSymbol = strategySymbols && strategySymbols.length > 0 ? strategyS
 function getTradeSymbol(trade) {
     return trade.symbol || fallbackSymbol;
 }
+
+// Toggle metric tooltip on click
+function toggleMetricTooltip(event) {
+    event.stopPropagation();
+    const icon = event.currentTarget;
+    const tooltip = icon.querySelector('.metric-tooltip');
+    
+    // Close all other tooltips
+    document.querySelectorAll('.metric-tooltip.show').forEach(t => {
+        if (t !== tooltip) {
+            t.classList.remove('show');
+        }
+    });
+    
+    // Toggle current tooltip
+    tooltip.classList.toggle('show');
+}
+
+// Close tooltips when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.metric-info-icon')) {
+        document.querySelectorAll('.metric-tooltip.show').forEach(t => {
+            t.classList.remove('show');
+        });
+    }
+});
 
 // Pagination settings
 let currentPage = 1;
@@ -813,7 +933,18 @@ function renderTradesTable() {
         
         const pnlClass = trade.pnl > 0 ? 'text-profit' : 'text-loss';
         const reasonBadgeClass = trade.reason === 'TP' ? 'badge-tp' : (trade.reason === 'SL' ? 'badge-sl' : 'badge-other');
-        const directionBadgeClass = trade.direction === 'LONG' ? 'badge-long' : 'badge-short';
+        
+        // Handle pair trading directions
+        let directionBadgeClass = 'badge-long';
+        if (trade.direction === 'LONG') {
+            directionBadgeClass = 'badge-long';
+        } else if (trade.direction === 'SHORT') {
+            directionBadgeClass = 'badge-short';
+        } else if (trade.direction === 'LONG_A_SHORT_B') {
+            directionBadgeClass = 'badge-long-a-short-b';
+        } else if (trade.direction === 'SHORT_A_LONG_B') {
+            directionBadgeClass = 'badge-short-a-long-b';
+        }
         
         row.innerHTML = `
             <td>${i + 1}</td>
