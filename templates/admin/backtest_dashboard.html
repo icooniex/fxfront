@@ -517,6 +517,7 @@
                     <th>Entry Time</th>
                     <th>Exit Time</th>
                     <th>Direction</th>
+                    <th>Lot Size</th>
                     <th>Entry Price</th>
                     <th>Exit Price</th>
                     <th>P&L</th>
@@ -952,6 +953,7 @@ function renderTradesTable() {
             <td>${formatDateTime(trade.entry_time)}</td>
             <td>${formatDateTime(trade.exit_time)}</td>
             <td><span class="${directionBadgeClass}">${trade.direction}</span></td>
+            <td>${(trade.lot_size || trade.qty_a || 0).toFixed(2)}</td>
             <td>${trade.entry_price.toFixed(3)}</td>
             <td>${trade.exit_price.toFixed(3)}</td>
             <td class="${pnlClass}">${trade.pnl > 0 ? '+' : ''}${trade.pnl.toFixed(2)}</td>
