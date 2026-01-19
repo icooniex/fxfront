@@ -89,13 +89,13 @@
         </div>
 
         <!-- Package Quotas Section -->
-        {% if active_quotas %}
         <div class="section-header" style="margin-top: 20px; margin-bottom: 12px;">
             <h6 class="section-title" style="font-weight: 600;">
                 <i class="bi bi-box-seam me-2" style="color: var(--primary-blue);"></i>แพคเกจของคุณ
             </h6>
         </div>
         
+        <!-- Active Quotas -->
         {% for quota in active_quotas %}
         <div class="glass-card fade-in mb-3" style="animation-delay: 0.2s; padding: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
@@ -213,6 +213,14 @@
             </a>
         </div>
         {% endfor %}
+        
+        <!-- Empty State -->
+        {% if not active_quotas and not pending_purchases %}
+        <div class="empty-state glass-card-static">
+            <i class="bi bi-box-seam"></i>
+            <div class="empty-state-title">ยังไม่มีแพคเกจ</div>
+            <div class="empty-state-text">เริ่มต้นด้วยการซื้อแพคเกจ</div>
+        </div>
         {% endif %}
 
         <!-- Settings/Actions -->
