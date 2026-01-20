@@ -262,11 +262,12 @@
 }
 
 .nav-item.active {
-    color: var(--primary-blue);
+    color: white;
     background: var(--primary-blue-light);
 }
 
 .nav-item.active i {
+    color: var(--primary-blue);
     transform: scale(1.1);
 }
 
