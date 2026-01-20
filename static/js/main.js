@@ -98,54 +98,6 @@ function addCardClickEffect() {
     });
 }
 
-// Pull to refresh functionality
-let touchStartY = 0;
-let touchEndY = 0;
-let isPulling = false;
-
-document.addEventListener('touchstart', function(e) {
-    if (window.scrollY === 0) {
-        touchStartY = e.touches[0].clientY;
-        isPulling = true;
-    }
-}, { passive: true });
-
-document.addEventListener('touchmove', function(e) {
-    if (isPulling) {
-        touchEndY = e.touches[0].clientY;
-        const pullDistance = touchEndY - touchStartY;
-        
-        if (pullDistance > 80) {
-            // Show refresh indicator
-            const indicator = document.getElementById('refresh-indicator');
-            if (indicator) {
-                indicator.style.opacity = '1';
-            }
-        }
-    }
-}, { passive: true });
-
-document.addEventListener('touchend', function() {
-    if (isPulling) {
-        const pullDistance = touchEndY - touchStartY;
-        
-        if (pullDistance > 80) {
-            // Trigger refresh
-            location.reload();
-        }
-        
-        // Hide refresh indicator
-        const indicator = document.getElementById('refresh-indicator');
-        if (indicator) {
-            indicator.style.opacity = '0';
-        }
-        
-        isPulling = false;
-        touchStartY = 0;
-        touchEndY = 0;
-    }
-});
-
 // File input preview for payment slip
 function previewPaymentSlip(input) {
     if (input.files && input.files[0]) {
