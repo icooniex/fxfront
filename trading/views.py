@@ -1248,6 +1248,27 @@ def bot_detail_view(request, bot_id):
     # Get latest backtest result
     latest_backtest = bot.get_latest_backtest()
     
+    # Calculate profit percentage and prepare trades data if backtest exists
+    trades_data = []
+    if latest_backtest and latest_backtest.raw_data.get('trades'):
+        trades = latest_backtest.raw_data['trades']
+        if trades:
+            # Calculate initial balance from first trade
+            first_trade = trades[0]
+            initial_balance = first_trade.get('cumulative', 10000) - first_trade.get('pnl', 0)
+            
+            # Calculate profit percentage
+            if initial_balance > 0:
+                profit_percent = (float(latest_backtest.total_profit) / float(initial_balance)) * 100
+                latest_backtest.profit_percent = round(profit_percent, 2)
+            else:
+                latest_backtest.profit_percent = 0
+            
+            # Prepare trades data for template
+            trades_data = trades
+    elif latest_backtest:
+        latest_backtest.profit_percent = 0
+    
     # Get user's accounts if logged in (to check compatibility)
     user_accounts = None
     if request.user.is_authenticated:
@@ -1261,7 +1282,8 @@ def bot_detail_view(request, bot_id):
         'bot': bot,
         'latest_backtest': latest_backtest,
         'user_accounts': user_accounts,
-        'allowed_packages': bot.allowed_packages.all()
+        'allowed_packages': bot.allowed_packages.all(),
+        'trades_data': trades_data
     }
     return render(request, 'bots/detail.html', context)
 

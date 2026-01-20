@@ -15,56 +15,45 @@
 
         <!-- Bot Header -->
         <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                    <h2 class="mb-2">🤖 {{ bot.name }}</h2>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <span class="badge-glass {% if bot.status == 'ACTIVE' %}badge-active{% elif bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}">
-                            {{ bot.get_status_display }}
-                        </span>
-                        <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9;">v{{ bot.version }}</span>
-                        {% if bot.strategy_type %}
-                        <span class="badge-glass" style="background: rgba(255, 255, 255, 0.05);">{{ bot.strategy_type }}</span>
-                        {% endif %}
-                    </div>
-                </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-3" style="flex: 1;">
+                <h2 class="mb-0" style="font-size: 1.5rem;">{{ bot.name }}</h2>
+                <span class="badge-glass {% if bot.status == 'ACTIVE' %}badge-active{% elif bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}" style="font-size: 0.6rem; padding: 2px 6px;">
+                    {{ bot.get_status_display }}
+                </span>
+                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.6rem; padding: 2px 6px;">v{{ bot.version }}</span>
+                <!-- {% if bot.strategy_type %}
+                <span class="badge-glass" style="background: rgba(255, 255, 255, 0.05); font-size: 0.6rem; padding: 2px 6px;">{{ bot.strategy_type }}</span>
+                {% endif %} -->
             </div>
-        </div>
-
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            
             {% if bot.description %}
-            <p class="text-secondary mb-4">{{ bot.description }}</p>
+            <p class="text-secondary mb-3" style="font-size: 0.9rem;">{{ bot.description }}</p>
             {% endif %}
 
             <!-- Allowed Symbols -->
-            <div class="mb-4">
-                <div class="stat-label mb-2">คู่เทรดที่รองรับ</div>
-                {% if bot.allowed_symbols %}
-                <div class="d-flex flex-wrap gap-2">
+            {% if bot.allowed_symbols %}
+            <div class="mb-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="stat-label" style="margin-bottom: 0; font-size: 0.85rem;">สัญลักษณ์ที่รองรับ:</span>
                     {% for symbol in bot.allowed_symbols %}
-                    <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.85rem; padding: 6px 12px;">{{ symbol }}</span>
+                    <span class="badge-glass" style="background: rgba(255, 255, 255, 0.03); font-size: 0.6rem; padding: 2px 6px;">{{ symbol }}</span>
                     {% endfor %}
                 </div>
-                {% else %}
-                <p class="text-secondary mb-0" style="font-size: 0.9rem;">ไม่มีข้อมูล</p>
-                {% endif %}
             </div>
+            {% endif %}
 
             <!-- Allowed Packages -->
             <div>
-                <div class="stat-label mb-2">แพ็คเกจที่รองรับ</div>
+                <div class="stat-label mb-2" style="font-size: 0.85rem;">แพ็คเกจที่รองรับ:</div>
                 {% if allowed_packages %}
-                <div class="d-flex flex-column gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     {% for package in allowed_packages %}
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-check-circle text-profit me-2" style="font-size: 1rem;"></i>
-                        <span style="font-size: 0.9rem;">{{ package.name }}</span>
-                    </div>
+                    <span class="badge-glass" style="background: rgba(21, 139, 249, 0.05); color: #158bf9; font-size: 0.7rem; padding: 4px 8px;">
+                        <i class="bi bi-check-circle me-1"></i>{{ package.name }}
+                    </span>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-secondary mb-0" style="font-size: 0.9rem;">ไม่มีข้อมูล</p>
+                <p class="text-secondary mb-0" style="font-size: 0.85rem;">ไม่มีข้อจำกัด</p>
                 {% endif %}
             </div>
         </div>
@@ -72,94 +61,126 @@
         
         <!-- Backtest Results -->
         {% if latest_backtest %}
-        <div class="section-header">
-            <h3 class="section-title">ผล Backtest ล่าสุด</h3>
-        </div>
-        
-        <!-- Main Metrics -->
+
+        <!-- Main Stats Card -->
         <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-                <div style="text-align: center;">
-                    <div class="stat-label" style="margin-bottom: 8px;">Total Profit</div>
-                    <div class="stat-value {% if latest_backtest.total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 1.75rem;">
-                        {{ latest_backtest.total_profit|floatformat:2 }}
-                    </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-3" style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);"><i class="bi bi-bar-chart-line"></i> Backtest ล่าสุด</h4>
+                <span class="badge-glass" style="font-size: 0.7rem; padding: 3px 8px;">
+                    {{ latest_backtest.backtest_start_date|date:"d M Y" }} - {{ latest_backtest.backtest_end_date|date:"d M Y" }}
+                </span>
+            </div>
+
+            <!-- Equity Curve Chart -->
+            {% if trades_data %}
+            <div style="background: rgba(255, 255, 255, 0.02); border-radius: 8px; padding: 16px; margin-bottom: 16px; height: 200px;">
+                <canvas id="equityCurveChart"></canvas>
+            </div>
+            {% endif %}
+
+            <!-- Main Metrics in one row -->
+            <div class="account-stats" style="display: flex !important; gap: 6px; flex-wrap: nowrap; grid-template-columns: unset; margin-top: 0; padding-top: 0; border-top: none;">
+                <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                    <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Profit</span>
+                    <span class="stat-value" style="font-size: 0.85rem; {% if latest_backtest.profit_percent >= 0 %}color: #158bf9;{% else %}color: #ff4444;{% endif %}">
+                        {% if latest_backtest.profit_percent >= 0 %}+{% endif %}{{ latest_backtest.profit_percent }}%
+                    </span>
                 </div>
-                <div style="text-align: center;">
-                    <div class="stat-label" style="margin-bottom: 8px;">Win Rate</div>
-                    <div class="stat-value {% if latest_backtest.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}" style="font-size: 1.75rem;">
-                        {{ latest_backtest.win_rate|floatformat:2 }}%
-                    </div>
+                <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                    <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Trades</span>
+                    <span class="stat-value" style="font-size: 0.85rem;">{{ latest_backtest.total_trades }}</span>
                 </div>
-                <div style="text-align: center;">
-                    <div class="stat-label" style="margin-bottom: 8px;">Max DD %</div>
-                    <div class="stat-value text-loss" style="font-size: 1.75rem;">{{ latest_backtest.max_drawdown_percent|floatformat:2 }}%</div>
+                <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                    <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Win Rate</span>
+                    <span class="stat-value" style="font-size: 0.85rem; {% if latest_backtest.win_rate >= 50 %}color: #158bf9;{% else %}color: #ff4444;{% endif %}">
+                        {{ latest_backtest.win_rate }}%
+                    </span>
+                </div>
+                <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                    <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Max DD</span>
+                    <span class="stat-value" style="font-size: 0.85rem; color: #ff4444;">
+                        {{ latest_backtest.max_drawdown_percent|floatformat:2 }}%
+                    </span>
                 </div>
             </div>
         </div>
 
         <!-- Detailed Stats -->
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="stat-label">ช่วงเวลาทดสอบ</span>
-                <span class="badge-glass" style="font-size: 0.85rem;">
-                    {{ latest_backtest.backtest_start_date|date:"d M Y" }} - {{ latest_backtest.backtest_end_date|date:"d M Y" }}
-                </span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="glass-card fade-in mb-3" style="padding: 16px;">
+            <h4 class="mb-3" style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">รายละเอียด</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Total Trades</span>
-                    <span class="stat-value" style="font-size: 0.95rem;">{{ latest_backtest.total_trades }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Wins</span>
+                    <span class="stat-value text-profit" style="font-size: 0.85rem;">{{ latest_backtest.winning_trades }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Wins</span>
-                    <span class="stat-value text-profit" style="font-size: 0.95rem;">{{ latest_backtest.winning_trades }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Losses</span>
+                    <span class="stat-value text-loss" style="font-size: 0.85rem;">{{ latest_backtest.losing_trades }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Losses</span>
-                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.losing_trades }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Avg/Trade</span>
+                    <span class="stat-value" style="font-size: 0.85rem;">{{ latest_backtest.avg_profit_per_trade|floatformat:2 }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Avg/Trade</span>
-                    <span class="stat-value" style="font-size: 0.95rem;">{{ latest_backtest.avg_profit_per_trade|floatformat:2 }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Best Trade</span>
+                    <span class="stat-value text-profit" style="font-size: 0.85rem;">{{ latest_backtest.best_trade|floatformat:2 }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Best Trade</span>
-                    <span class="stat-value text-profit" style="font-size: 0.95rem;">{{ latest_backtest.best_trade|floatformat:2 }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Worst Trade</span>
+                    <span class="stat-value text-loss" style="font-size: 0.85rem;">{{ latest_backtest.worst_trade|floatformat:2 }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Worst Trade</span>
-                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.worst_trade|floatformat:2 }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="stat-label" style="font-size: 0.9rem;">Max Drawdown</span>
-                    <span class="stat-value text-loss" style="font-size: 0.95rem;">{{ latest_backtest.max_drawdown|floatformat:2 }}</span>
+                    <span class="stat-label" style="font-size: 0.8rem;">Max DD ($)</span>
+                    <span class="stat-value text-loss" style="font-size: 0.85rem;">{{ latest_backtest.max_drawdown|floatformat:2 }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Equity Curve -->
-        {% if latest_backtest.equity_curve_image %}
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <h4 class="mb-3" style="font-size: 1rem; color: rgba(255, 255, 255, 0.7);">Equity Curve</h4>
-            <img src="{{ latest_backtest.equity_curve_image.url }}" alt="Equity Curve" class="img-fluid rounded" style="max-width: 100%; height: auto;">
+        <!-- Trade Log Chart -->
+        {% if trades_data %}
+        <div class="glass-card fade-in mb-3" style="padding: 16px;">
+            <h4 class="mb-3" style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+                <i class="bi bi-graph-up"></i> Trade Log - Entry & Exit Points
+            </h4>
+            <div style="height: 200px;">
+                <canvas id="tradeLogChart"></canvas>
+            </div>
         </div>
-        {% endif %}
 
-        <!-- Comprehensive Analysis -->
-        {% if latest_backtest.comprehensive_analysis_image %}
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <h4 class="mb-3" style="font-size: 1rem; color: rgba(255, 255, 255, 0.7);">Comprehensive Analysis</h4>
-            <img src="{{ latest_backtest.comprehensive_analysis_image.url }}" alt="Comprehensive Analysis" class="img-fluid rounded" style="max-width: 100%; height: auto;">
-        </div>
-        {% endif %}
+        <!-- Trade History Table -->
+        <div class="glass-card fade-in mb-3" style="padding: 16px;">
+            <h4 class="mb-3" style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+                <i class="bi bi-table"></i> Trade History ({{ trades_data|length }} trades)
+            </h4>
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; color: var(--text-primary); font-size: 12px;">
+                    <thead style="border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                        <tr>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">#</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">Symbol</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">Entry</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">Exit</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">Type</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">P&L</th>
+                            <th style="padding: 10px 6px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradesTableBody">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
 
-        <!-- Trading Graph -->
-        {% if latest_backtest.trading_graph_image %}
-        <div class="glass-card fade-in mb-3" style="padding: 20px;">
-            <h4 class="mb-3" style="font-size: 1rem; color: rgba(255, 255, 255, 0.7);">Trading Graph</h4>
-            <img src="{{ latest_backtest.trading_graph_image.url }}" alt="Trading Graph" class="img-fluid rounded" style="max-width: 100%; height: auto;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <button class="btn btn-glass btn-sm" id="prevPageBtn" onclick="changePage(-1)" style="font-size: 0.8rem; padding: 6px 12px;">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </button>
+                <span style="color: var(--text-secondary); font-size: 12px;" id="paginationInfo">Page 1</span>
+                <button class="btn btn-glass btn-sm" id="nextPageBtn" onclick="changePage(1)" style="font-size: 0.8rem; padding: 6px 12px;">
+                    Next <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
         </div>
         {% endif %}
         {% else %}
@@ -206,4 +227,402 @@
 
 {% block bottom_nav %}
 {% include 'base/bottom_nav.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if trades_data %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+// Trades data from Django
+const tradesData = {{ trades_data|safe }};
+const strategySymbols = {{ bot.allowed_symbols|safe }};
+const fallbackSymbol = strategySymbols && strategySymbols.length > 0 ? strategySymbols[0] : 'N/A';
+
+// Helper function to get symbol from trade or fallback
+function getTradeSymbol(trade) {
+    return trade.symbol || fallbackSymbol;
+}
+
+// Pagination settings
+let currentPage = 1;
+const rowsPerPage = 20;
+
+// Chart instances
+let tradeLogChart = null;
+let equityCurveChart = null;
+
+// Initialize everything
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    renderTradesTable();
+});
+
+// Initialize charts
+function initCharts() {
+    if (tradesData.length === 0) return;
+    
+    // Prepare data for charts
+    const chartData = prepareChartData(tradesData);
+    
+    // Equity Curve Chart
+    initEquityCurveChart(chartData);
+    
+    // Trade Log Chart
+    initTradeLogChart(chartData);
+}
+
+// Prepare data for charts
+function prepareChartData(trades) {
+    const entries = [];
+    const exits = [];
+    const equityCurve = [];
+    const priceLine = [];
+    
+    trades.forEach((trade, index) => {
+        // Entry points
+        entries.push({
+            x: new Date(trade.entry_time),
+            y: trade.entry_price,
+            pnl: trade.pnl,
+            direction: trade.direction,
+            index: index
+        });
+        
+        // Exit points
+        exits.push({
+            x: new Date(trade.exit_time),
+            y: trade.exit_price,
+            pnl: trade.pnl,
+            reason: trade.reason,
+            index: index
+        });
+        
+        // Price line (connect entry to exit)
+        priceLine.push({
+            x: new Date(trade.entry_time),
+            y: trade.entry_price
+        });
+        priceLine.push({
+            x: new Date(trade.exit_time),
+            y: trade.exit_price
+        });
+        
+        // Equity curve
+        equityCurve.push({
+            x: new Date(trade.exit_time),
+            y: trade.cumulative
+        });
+    });
+    
+    return { entries, exits, equityCurve, priceLine };
+}
+
+// Initialize Equity Curve Chart
+function initEquityCurveChart(chartData) {
+    const ctx = document.getElementById('equityCurveChart').getContext('2d');
+    
+    // Find initial value
+    const initialValue = tradesData.length > 0 ? tradesData[0].cumulative - tradesData[0].pnl : 0;
+    
+    equityCurveChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Equity',
+                data: chartData.equityCurve,
+                borderColor: '#158bf9',
+                segment: {
+                    borderColor: ctx => {
+                        const value = ctx.p1.parsed.y;
+                        return value >= initialValue ? '#158bf9' : '#ff4444';
+                    }
+                },
+                borderWidth: 2,
+                fill: {
+                    target: {value: initialValue},
+                    above: 'rgba(21, 139, 249, 0.15)',
+                    below: 'rgba(255, 68, 68, 0.15)'
+                },
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: '#158bf9'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    titleColor: '#ffffff',
+                    bodyColor: '#a0a0b0',
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            const date = new Date(context[0].parsed.x);
+                            return date.toLocaleDateString('th-TH', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            });
+                        },
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            const profit = value - initialValue;
+                            return [
+                                `Equity: $${value.toFixed(2)}`,
+                                `Profit: ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d'
+                        }
+                    },
+                    display: false
+                },
+                y: {
+                    grid: {
+                        display: false,
+                        drawBorder: true
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        font: { size: 9 },
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize Trade Log Chart
+function initTradeLogChart(chartData) {
+    const ctx = document.getElementById('tradeLogChart').getContext('2d');
+    
+    // Separate winning and losing entries/exits
+    const winningEntries = chartData.entries.filter(e => e.pnl > 0);
+    const losingEntries = chartData.entries.filter(e => e.pnl <= 0);
+    const winningExits = chartData.exits.filter(e => e.pnl > 0);
+    const losingExits = chartData.exits.filter(e => e.pnl <= 0);
+    
+    tradeLogChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Price Line',
+                    type: 'line',
+                    data: chartData.priceLine,
+                    borderColor: 'rgba(160, 160, 176, 0.3)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0,
+                    order: 2
+                },
+                {
+                    label: 'Winning Entry',
+                    data: winningEntries,
+                    backgroundColor: 'rgba(21, 139, 249, 0.6)',
+                    borderColor: '#158bf9',
+                    borderWidth: 2,
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    rotation: 0,
+                    order: 0
+                },
+                {
+                    label: 'Losing Entry',
+                    data: losingEntries,
+                    backgroundColor: 'rgba(255, 68, 68, 0.6)',
+                    borderColor: '#ff4444',
+                    borderWidth: 2,
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    rotation: 180,
+                    order: 0
+                },
+                {
+                    label: 'Winning Exit',
+                    data: winningExits,
+                    backgroundColor: 'rgba(21, 139, 249, 0.4)',
+                    borderColor: '#158bf9',
+                    borderWidth: 1,
+                    pointRadius: 4,
+                    pointStyle: 'circle',
+                    order: 1
+                },
+                {
+                    label: 'Losing Exit',
+                    data: losingExits,
+                    backgroundColor: 'rgba(255, 68, 68, 0.4)',
+                    borderColor: '#ff4444',
+                    borderWidth: 1,
+                    pointRadius: 4,
+                    pointStyle: 'circle',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#a0a0b0',
+                        font: { size: 10 },
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    titleColor: '#ffffff',
+                    bodyColor: '#a0a0b0',
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            const point = context[0].raw;
+                            return `Trade #${point.index + 1}`;
+                        },
+                        label: function(context) {
+                            const point = context.raw;
+                            return [
+                                `Price: ${point.y.toFixed(3)}`,
+                                `P&L: ${point.pnl > 0 ? '+' : ''}${point.pnl.toFixed(2)}`,
+                                `Direction: ${point.direction || point.reason}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 9 }
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b6b7b',
+                        font: { size: 9 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render trades table with pagination
+function renderTradesTable() {
+    const tbody = document.getElementById('tradesTableBody');
+    tbody.innerHTML = '';
+    
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const pageTrades = tradesData.slice(start, end);
+    
+    pageTrades.forEach((trade, index) => {
+        const globalIndex = start + index;
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.03)';
+        
+        // Determine badge style based on reason
+        let reasonBadge = '';
+        if (trade.reason === 'TP' || trade.reason === 'TAKE_PROFIT') {
+            reasonBadge = '<span style="background: rgba(21, 139, 249, 0.15); color: #158bf9; padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 600;">TP</span>';
+        } else if (trade.reason === 'SL' || trade.reason === 'STOP_LOSS') {
+            reasonBadge = '<span style="background: rgba(255, 68, 68, 0.15); color: #ff4444; padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 600;">SL</span>';
+        } else {
+            reasonBadge = '<span style="background: rgba(255, 193, 7, 0.15); color: #ffc107; padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 600;">' + (trade.reason || 'OTHER') + '</span>';
+        }
+        
+        // Direction badge
+        let directionBadge = '';
+        if (trade.direction === 'LONG' || trade.direction === 'BUY') {
+            directionBadge = '<span style="background: rgba(21, 139, 249, 0.15); color: #158bf9; padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 600;">LONG</span>';
+        } else if (trade.direction === 'SHORT' || trade.direction === 'SELL') {
+            directionBadge = '<span style="background: rgba(255, 68, 68, 0.15); color: #ff4444; padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 600;">SHORT</span>';
+        } else {
+            directionBadge = '<span style="background: rgba(255, 255, 255, 0.05); padding: 3px 6px; border-radius: 3px; font-size: 9px;">' + trade.direction + '</span>';
+        }
+        
+        row.innerHTML = `
+            <td style="padding: 8px 6px;">${globalIndex + 1}</td>
+            <td style="padding: 8px 6px;">${getTradeSymbol(trade)}</td>
+            <td style="padding: 8px 6px; font-size: 11px;">${new Date(trade.entry_time).toLocaleDateString('en-GB')}</td>
+            <td style="padding: 8px 6px; font-size: 11px;">${new Date(trade.exit_time).toLocaleDateString('en-GB')}</td>
+            <td style="padding: 8px 6px;">${directionBadge}</td>
+            <td style="padding: 8px 6px; font-weight: 600; ${trade.pnl > 0 ? 'color: #158bf9;' : 'color: #ff4444;'}">
+                ${trade.pnl > 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+            </td>
+            <td style="padding: 8px 6px;">${reasonBadge}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Update pagination info
+    const totalPages = Math.ceil(tradesData.length / rowsPerPage);
+    document.getElementById('paginationInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+}
+
+// Change page
+function changePage(delta) {
+    const totalPages = Math.ceil(tradesData.length / rowsPerPage);
+    const newPage = currentPage + delta;
+    
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderTradesTable();
+    }
+}
+</script>
+{% endif %}
 {% endblock %}
