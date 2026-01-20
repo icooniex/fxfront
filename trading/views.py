@@ -1211,6 +1211,25 @@ def bots_list_view(request):
     # Add latest backtest result to each bot
     for bot in bots:
         bot.latest_backtest = bot.get_latest_backtest()
+        
+        # Calculate profit percentage from initial balance if backtest exists
+        if bot.latest_backtest and bot.latest_backtest.raw_data.get('trades'):
+            trades = bot.latest_backtest.raw_data['trades']
+            if trades:
+                # Calculate initial balance from first trade
+                first_trade = trades[0]
+                initial_balance = first_trade.get('cumulative', 10000) - first_trade.get('pnl', 0)
+                
+                # Calculate profit percentage
+                if initial_balance > 0:
+                    profit_percent = (float(bot.latest_backtest.total_profit) / float(initial_balance)) * 100
+                    bot.latest_backtest.profit_percent = round(profit_percent, 2)
+                else:
+                    bot.latest_backtest.profit_percent = 0
+            else:
+                bot.latest_backtest.profit_percent = 0
+        elif bot.latest_backtest:
+            bot.latest_backtest.profit_percent = 0
     
     context = {
         'bots': bots

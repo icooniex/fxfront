@@ -19,31 +19,25 @@
             <div class="col-12">
                 <div class="glass-card fade-in" onclick="window.location.href='{% url 'bot_detail' bot.id %}'" style="cursor: pointer; padding: 20px;">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h3 class="mb-2" style="font-size: 1.25rem;">{{ bot.name }}</h3>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <span class="badge-glass {% if bot.status == 'ACTIVE' %}badge-active{% elif bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}">
-                                    {{ bot.get_status_display }}
-                                </span>
-                                <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9;">v{{ bot.version }}</span>
-                                {% if bot.strategy_type %}
-                                <span class="badge-glass" style="background: rgba(255, 255, 255, 0.05);">{{ bot.strategy_type }}</span>
-                                {% endif %}
-                            </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap" style="flex: 1;">
+                            <h3 class="mb-0" style="font-size: 1.25rem;">{{ bot.name }}</h3>
+                            <span class="badge-glass {% if bot.status == 'ACTIVE' %}badge-active{% elif bot.status == 'BETA' %}badge-warning{% else %}badge-paused{% endif %}" style="font-size: 0.6rem; padding: 2px 6px;">
+                                {{ bot.get_status_display }}
+                            </span>
+                            <span class="badge-glass" style="background: rgba(21, 139, 249, 0.1); color: #158bf9; font-size: 0.6rem; padding: 2px 6px;">v{{ bot.version }}</span>
+                            {% if bot.strategy_type %}
+                            <span class="badge-glass" style="background: rgba(255, 255, 255, 0.05); font-size: 0.6rem; padding: 2px 6px;">{{ bot.strategy_type }}</span>
+                            {% endif %}
                         </div>
                     </div>
-
-                    <p class="text-secondary mb-3" style="font-size: 0.9rem;">
-                        {{ bot.description|truncatewords:20 }}
-                    </p>
 
                     <!-- Allowed Symbols -->
                     {% if bot.allowed_symbols %}
                     <div class="mb-3">
-                        <div class="stat-label mb-2">สัญลักษณ์ที่รองรับ:</div>
-                        <div class="d-flex flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="stat-label" style="margin-bottom: 0;">Symbols:</span>
                             {% for symbol in bot.allowed_symbols %}
-                            <span class="badge-glass" style="background: rgba(255, 255, 255, 0.03); font-size: 0.85rem;">{{ symbol }}</span>
+                            <span class="badge-glass" style="background: rgba(255, 255, 255, 0.03); font-size: 0.6rem; padding: 2px 6px;">{{ symbol }}</span>
                             {% endfor %}
                         </div>
                     </div>
@@ -51,35 +45,44 @@
 
                     <!-- Latest Backtest Result -->
                     {% if bot.latest_backtest %}
-                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px; margin-top: 16px;">
-                        <div class="stat-label mb-3">ผล Backtest ล่าสุด</div>
-                        <div class="account-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Win Rate</span>
-                                <span class="stat-value {% if bot.latest_backtest.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
+                    <div style=" padding-top: 6px; margin-top: 6px;">
+                        <!-- <div class="stat-label mb-3">ผล Backtest ล่าสุด</div> -->
+                        
+                        <!-- Equity Curve Chart -->
+                        {% if bot.latest_backtest.raw_data.trades %}
+                        <div style="background: rgba(255, 255, 255, 0.02); border-radius: 8px; padding: 16px; margin-bottom: 6px; height: 140px;">
+                            <canvas id="equityCurveChart-{{ bot.id }}"></canvas>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Stats Cards -->
+                        <div class="account-stats" style="display: flex !important; gap: 6px; flex-wrap: nowrap; grid-template-columns: unset;margin:0;padding:0;border:0">
+                            <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                                <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Profit</span>
+                                <span class="stat-value" style="font-size: 0.85rem; {% if bot.latest_backtest.profit_percent >= 0 %}color: #158bf9;{% else %}color: #ff4444;{% endif %}">
+                                    {% if bot.latest_backtest.profit_percent >= 0 %}+{% endif %}{{ bot.latest_backtest.profit_percent }}%
+                                </span>
+                            </div>
+                            <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                                <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Trades</span>
+                                <span class="stat-value" style="font-size: 0.85rem;">{{ bot.latest_backtest.total_trades }}</span>
+                            </div>
+                            <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                                <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Win Rate</span>
+                                <span class="stat-value" style="font-size: 0.85rem; {% if bot.latest_backtest.win_rate >= 50 %}color: #158bf9;{% else %}color: #ff4444;{% endif %}">
                                     {{ bot.latest_backtest.win_rate }}%
                                 </span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Total Trades</span>
-                                <span class="stat-value">{{ bot.latest_backtest.total_trades }}</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Total Profit</span>
-                                <span class="stat-value {% if bot.latest_backtest.total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                                    {{ bot.latest_backtest.total_profit|floatformat:2 }}
-                                </span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Max DD</span>
-                                <span class="stat-value text-loss">
+                            <div class="stat-item" style="padding: 6px 8px; min-width: auto; flex: 1;">
+                                <span class="stat-label" style="font-size: 0.65rem; margin-bottom: 2px;">Max DD</span>
+                                <span class="stat-value" style="font-size: 0.85rem; color: #ff4444;">
                                     {{ bot.latest_backtest.max_drawdown_percent|floatformat:2 }}%
                                 </span>
                             </div>
                         </div>
-                        <div class="text-secondary mt-2" style="font-size: 0.85rem;">
+                        <!-- <div class="text-secondary mt-2" style="font-size: 0.85rem;">
                             <i class="bi bi-clock"></i> {{ bot.latest_backtest.run_date|date:"d M Y" }}
-                        </div>
+                        </div> -->
                     </div>
                     {% else %}
                     <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px; margin-top: 16px;">
@@ -105,3 +108,124 @@
 {% block bottom_nav %}
 {% include 'base/bottom_nav.html' %}
 {% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js for equity curves -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% for bot in bots %}
+    {% if bot.latest_backtest and bot.latest_backtest.raw_data.trades %}
+    (function() {
+        const tradesData = {{ bot.latest_backtest.raw_data.trades|safe }};
+        const canvasId = 'equityCurveChart-{{ bot.id }}';
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas || !tradesData || tradesData.length === 0) {
+            return;
+        }
+        
+        // Prepare equity curve data
+        const equityCurve = [];
+        tradesData.forEach(trade => {
+            equityCurve.push({
+                x: new Date(trade.exit_time),
+                y: trade.cumulative
+            });
+        });
+        
+        // Find initial value
+        const initialValue = tradesData.length > 0 ? tradesData[0].cumulative - tradesData[0].pnl : 0;
+        
+        // Create chart
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Equity',
+                    data: equityCurve,
+                    borderColor: '#158bf9',
+                    segment: {
+                        borderColor: ctx => {
+                            const value = ctx.p1.parsed.y;
+                            return value >= initialValue ? '#158bf9' : '#ff4444';
+                        }
+                    },
+                    borderWidth: 2,
+                    fill: {
+                        target: {value: initialValue},
+                        above: 'rgba(21, 139, 249, 0.15)',
+                        below: 'rgba(255, 68, 68, 0.15)'
+                    },
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: '#158bf9'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        titleColor: '#ffffff',
+                        bodyColor: '#a0a0b0',
+                        padding: 10,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return date.toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                });
+                            },
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                const profit = value - initialValue;
+                                return [
+                                    `Equity: $${value.toFixed(2)}`,
+                                    `Profit: ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'MMM d'
+                            }
+                        },
+                        display: false
+                    },
+                    y: {
+                        display: false
+                    }
+                }
+            }
+        });
+    })();
+    {% endif %}
+    {% endfor %}
+});
+</script>
+{% endblock %}
+
