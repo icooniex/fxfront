@@ -940,6 +940,20 @@ def bot_heartbeat(request):
         # For pair trading: {"EURUSD/GBPUSD": {...params...}}
         current_parameters = trade_account.active_bot.current_parameters or {}
         
+        # Clean up parameters_by_symbol - extract only matching symbol parameters
+        # If current_parameters has nested structure like {"EURUSD": {"EURUSD": {...}, "GBPUSD": {...}}}
+        # Extract only the matching inner dict
+        cleaned_parameters = {}
+        for symbol in trade_account.active_bot.allowed_symbols:
+            if symbol in current_parameters:
+                params = current_parameters[symbol]
+                # If params is a dict and has a key matching the symbol, extract it
+                if isinstance(params, dict) and symbol in params:
+                    cleaned_parameters[symbol] = params[symbol]
+                else:
+                    # Otherwise use params as-is
+                    cleaned_parameters[symbol] = params
+        
         strategy_info = {
             'id': trade_account.active_bot.id,
             'name': trade_account.active_bot.name,
@@ -949,7 +963,7 @@ def bot_heartbeat(request):
             'status': trade_account.active_bot.status,
             'is_pair_trading': trade_account.active_bot.is_pair_trading,
             'allowed_symbols': trade_account.active_bot.allowed_symbols,
-            'parameters_by_symbol': current_parameters,
+            'parameters_by_symbol': cleaned_parameters,
         }
     
     return JsonResponse({
@@ -1736,6 +1750,20 @@ def get_strategy_config(request, strategy_id):
             # Apply to all symbols
             parameters_by_symbol = {symbol: param_keys for symbol in bot_strategy.allowed_symbols}
     
+    # Clean up parameters_by_symbol - extract only matching symbol parameters
+    # If parameters_by_symbol has nested structure like {"EURUSD": {"EURUSD": {...}, "GBPUSD": {...}}}
+    # Extract only the matching inner dict
+    cleaned_parameters = {}
+    for symbol in bot_strategy.allowed_symbols:
+        if symbol in parameters_by_symbol:
+            params = parameters_by_symbol[symbol]
+            # If params is a dict and has a key matching the symbol, extract it
+            if isinstance(params, dict) and symbol in params:
+                cleaned_parameters[symbol] = params[symbol]
+            else:
+                # Otherwise use params as-is
+                cleaned_parameters[symbol] = params
+    
     # Build response
     response_data = {
         'status': 'success',
@@ -1746,7 +1774,7 @@ def get_strategy_config(request, strategy_id):
         'bot_strategy_class': bot_strategy.bot_strategy_class,
         'is_pair_trading': bot_strategy.is_pair_trading,
         'allowed_symbols': bot_strategy.allowed_symbols,
-        'parameters_by_symbol': parameters_by_symbol,
+        'parameters_by_symbol': cleaned_parameters,
         'optimization_config': bot_strategy.optimization_config or {},
         'last_optimization_date': bot_strategy.last_optimization_date.isoformat() if bot_strategy.last_optimization_date else None,
     }
