@@ -1030,6 +1030,8 @@ def setup_mt5_account_view(request, payment_id):
         mt5_password = request.POST.get('mt5_password')
         mt5_server = request.POST.get('mt5_server')
         broker_name = request.POST.get('broker_name', 'Pending Setup')
+        account_type = request.POST.get('account_type', 'PRO')
+        symbol_suffix = request.POST.get('symbol_suffix', '').strip()
         
         # Validate required fields
         if not all([account_name, mt5_account_id, mt5_password, mt5_server]):
@@ -1049,6 +1051,8 @@ def setup_mt5_account_view(request, payment_id):
             mt5_password=mt5_password,  # TODO: Should encrypt this
             broker_name=broker_name,
             mt5_server=mt5_server,
+            account_type=account_type,
+            symbol_suffix=symbol_suffix,
             subscription_package=payment.subscription_package,
             subscription_start=quota.start_date,
             subscription_expiry=quota.expiry_date,
@@ -1613,6 +1617,8 @@ def account_mt5_reset_submit_view(request, account_id):
     new_mt5_password = request.POST.get('mt5_password')
     new_mt5_server = request.POST.get('mt5_server')
     new_broker_name = request.POST.get('broker_name', account.broker_name)
+    new_account_type = request.POST.get('account_type', account.account_type)
+    new_symbol_suffix = request.POST.get('symbol_suffix', '').strip()
     
     # Validate required fields
     if not all([new_account_name, new_mt5_account_id, new_mt5_password, new_mt5_server]):
@@ -1636,6 +1642,8 @@ def account_mt5_reset_submit_view(request, account_id):
         'mt5_password': new_mt5_password,
         'mt5_server': new_mt5_server,
         'broker_name': new_broker_name,
+        'account_type': new_account_type,
+        'symbol_suffix': new_symbol_suffix,
     }
     
     payment = SubscriptionPayment.objects.create(
@@ -1683,6 +1691,8 @@ def add_account_from_quota_view(request, quota_id):
         mt5_password = request.POST.get('mt5_password')
         mt5_server = request.POST.get('mt5_server')
         broker_name = request.POST.get('broker_name', 'Pending Setup')
+        account_type = request.POST.get('account_type', 'PRO')
+        symbol_suffix = request.POST.get('symbol_suffix', '').strip()
         
         # Validate required fields
         if not all([account_name, mt5_account_id, mt5_password, mt5_server]):
@@ -1702,6 +1712,8 @@ def add_account_from_quota_view(request, quota_id):
             mt5_password=mt5_password,  # TODO: Should encrypt this
             broker_name=broker_name,
             mt5_server=mt5_server,
+            account_type=account_type,
+            symbol_suffix=symbol_suffix,
             subscription_package=quota.subscription_package,
             subscription_start=quota.start_date,
             subscription_expiry=quota.expiry_date,

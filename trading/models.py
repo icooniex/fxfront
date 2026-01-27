@@ -70,6 +70,12 @@ class DDBlockReason(models.TextChoices):
     MAX_ACCOUNT_DD = 'MAX_ACCOUNT_DD', 'Max Account DD Reached'
 
 
+class AccountType(models.TextChoices):
+    PRO = 'PRO', 'Pro (No Suffix)'
+    STANDARD = 'STANDARD', 'Standard'
+    CENT = 'CENT', 'Cent'
+
+
 # User Profile Model
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -188,6 +194,20 @@ class UserTradeAccount(TimeStampedModel):
     mt5_password = models.CharField(max_length=200, blank=True, help_text="MT5 Account Password (encrypted)")
     broker_name = models.CharField(max_length=100)
     mt5_server = models.CharField(max_length=100)
+    
+    # Symbol suffix configuration
+    account_type = models.CharField(
+        max_length=20,
+        choices=AccountType.choices,
+        default=AccountType.PRO,
+        help_text="Account type determines symbol suffix pattern"
+    )
+    symbol_suffix = models.CharField(
+        max_length=10,
+        blank=True,
+        default='',
+        help_text="Symbol suffix (e.g., 'm' for Standard, 'c' for Cent, empty for Pro)"
+    )
     
     # Subscription details
     subscription_package = models.ForeignKey(

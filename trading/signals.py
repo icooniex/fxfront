@@ -142,6 +142,10 @@ def handle_payment_status_change(sender, instance, **kwargs):
                         trade_account.mt5_server = instance.new_mt5_data['mt5_server']
                     if 'broker_name' in instance.new_mt5_data:
                         trade_account.broker_name = instance.new_mt5_data['broker_name']
+                    if 'account_type' in instance.new_mt5_data:
+                        trade_account.account_type = instance.new_mt5_data['account_type']
+                    if 'symbol_suffix' in instance.new_mt5_data:
+                        trade_account.symbol_suffix = instance.new_mt5_data['symbol_suffix']
                     
                     # Increment reset counter
                     trade_account.current_period_reset_count += 1

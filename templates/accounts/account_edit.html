@@ -59,6 +59,16 @@
                 <p class="mb-0" style="font-size: 14px; font-weight: 500;">{{ account.broker_name }}</p>
             </div>
 
+            <div class="mb-3">
+                <span class="text-muted" style="font-size: 12px; display: block; margin-bottom: 4px;">ประเภทบัญชี</span>
+                <p class="mb-0" style="font-size: 14px; font-weight: 500;">
+                    {{ account.get_account_type_display }}
+                    {% if account.symbol_suffix %}
+                    <span class="text-muted" style="font-size: 12px;">(Suffix: {{ account.symbol_suffix }})</span>
+                    {% endif %}
+                </p>
+            </div>
+
             <div class="divider" style="margin: 16px 0;"></div>
 
             <div class="mb-0">
@@ -167,7 +177,7 @@
                     <small class="text-muted">เช่น: Exness-MT5Trial7</small>
                 </div>
 
-                <div class="mb-0">
+                <div class="mb-3">
                     <label for="broker_name" class="form-label">ชื่อโบรกเกอร์ (ไม่บังคับ)</label>
                     <input type="text" 
                            class="form-control form-control-glass" 
@@ -177,7 +187,52 @@
                            {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
                     <small class="text-muted">เช่น: Exness, XM</small>
                 </div>
+
+                <div class="mb-3">
+                    <label for="account_type" class="form-label">ประเภทบัญชี</label>
+                    <select class="form-select form-control-glass" 
+                            id="account_type" 
+                            name="account_type"
+                            onchange="updateSuffixField()"
+                            {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                        <option value="PRO" {% if account.account_type == 'PRO' %}selected{% endif %}>Pro (ไม่มี Suffix)</option>
+                        <option value="STANDARD" {% if account.account_type == 'STANDARD' %}selected{% endif %}>Standard (Suffix: m)</option>
+                        <option value="CENT" {% if account.account_type == 'CENT' %}selected{% endif %}>Cent (Suffix: c)</option>
+                    </select>
+                    <small class="text-muted">เลือกประเภทบัญชีตามโบรกเกอร์ของคุณ</small>
+                </div>
+
+                <div class="mb-0">
+                    <label for="symbol_suffix" class="form-label">Symbol Suffix (ไม่บังคับ)</label>
+                    <input type="text" 
+                           class="form-control form-control-glass" 
+                           id="symbol_suffix" 
+                           name="symbol_suffix" 
+                           value="{{ account.symbol_suffix }}"
+                           placeholder="เช่น: m, c, pro"
+                           maxlength="10"
+                           {% if not can_reset or not bot_is_paused or has_open_positions %}disabled{% endif %}>
+                    <small class="text-muted">
+                        Suffix ที่เพิ่มท้าย Symbol (เช่น XAUUSD<strong>m</strong>, EURUSD<strong>c</strong>) 
+                        หากบัญชีของคุณไม่มี Suffix ให้เว้นว่างไว้
+                    </small>
+                </div>
             </div>
+
+            <script>
+            function updateSuffixField() {
+                const accountType = document.getElementById('account_type').value;
+                const suffixField = document.getElementById('symbol_suffix');
+                
+                if (accountType === 'STANDARD') {
+                    suffixField.value = 'm';
+                } else if (accountType === 'CENT') {
+                    suffixField.value = 'c';
+                } else {
+                    suffixField.value = '';
+                }
+            }
+            </script>
 
             <!-- Important Notes -->
             <div class="glass-card fade-in mb-3" style="animation-delay: 0.5s; padding: 20px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">

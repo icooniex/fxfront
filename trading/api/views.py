@@ -982,6 +982,8 @@ def bot_heartbeat(request):
         'trade_config': trade_config,
         'risk_config': risk_config,
         'strategy': strategy_info,
+        'symbol_suffix': trade_account.symbol_suffix,
+        'account_type': trade_account.account_type,
     }, status=200)
 
 
@@ -1680,6 +1682,8 @@ def get_trade_config(request, mt5_account_id):
         'trade_config': trade_account.trade_config or {},
         'active_bot_id': trade_account.active_bot.id if trade_account.active_bot else None,
         'active_bot_name': trade_account.active_bot.name if trade_account.active_bot else None,
+        'symbol_suffix': trade_account.symbol_suffix,
+        'account_type': trade_account.account_type,
     }
     
     return JsonResponse(response_data, status=200)
